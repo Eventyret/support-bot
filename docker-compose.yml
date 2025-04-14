@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: support-bot-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=support-bot
+    networks:
+      - support-bot-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: support-bot-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=mongodb://mongodb:27017/support-bot
+      - PORT=3000
+    depends_on:
+      - mongodb
+    networks:
+      - support-bot-network
+
+volumes:
+  mongodb_data:
+    name: support-bot-mongodb-data
+
+networks:
+  support-bot-network:
+    name: support-bot-network
