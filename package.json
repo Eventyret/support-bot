@@ -11,7 +11,9 @@
         "dev:backend": "cd backend && npm run dev",
         "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
         "prisma:generate": "cd backend && npm run prisma:generate",
-        "prisma:push": "cd backend && npm run prisma:push"
+        "prisma:push": "cd backend && npm run prisma:push",
+        "build": "cd frontend && npm run build",
+        "lint": "cd frontend && npm run lint"
     },
     "keywords": [],
     "author": "",

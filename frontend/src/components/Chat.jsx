@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
     ChatBubble,
@@ -14,63 +14,42 @@ import {
     ExpandableChatHeader,
 } from "@/components/ui/expandable-chat"
 import { Bot, CornerDownLeft, Mic, Paperclip } from "lucide-react"
+import { useChat } from '@ai-sdk/react'
 
 export default function Chat() {
-    const [messages, setMessages] = useState([
-        {
-            id: 1,
-            content: "Hello! How can I help you today?",
-            sender: "ai",
+    const [sessionId, setSessionId] = useState(null)
+    const messagesEndRef = useRef(null)
+
+    const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+        api: '/api/ai/chat',
+        body: {
+            sessionId,
         },
-        {
-            id: 2,
-            content: "I have a question about the component library.",
-            sender: "user",
+        onResponse: (response) => {
+            // Create a new session if we don't have one
+            if (!sessionId) {
+                const newSessionId = response.headers.get('x-session-id')
+                if (newSessionId) {
+                    setSessionId(newSessionId)
+                }
+            }
         },
-        {
-            id: 3,
-            content: "Sure! I'd be happy to help. What would you like to know?",
-            sender: "ai",
-        },
-    ])
+    })
 
-    const [input, setInput] = useState("")
-    const [isLoading, setIsLoading] = useState(false)
-
-    const handleSubmit = (e) => {
-        e.preventDefault()
-        if (!input.trim()) return
-
-        setMessages((prev) => [
-            ...prev,
-            {
-                id: prev.length + 1,
-                content: input,
-                sender: "user",
-            },
-        ])
-        setInput("")
-        setIsLoading(true)
-
-        setTimeout(() => {
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: prev.length + 1,
-                    content: "This is an AI response to your message.",
-                    sender: "ai",
-                },
-            ])
-            setIsLoading(false)
-        }, 1000)
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }
 
+    useEffect(() => {
+        scrollToBottom()
+    }, [messages])
+
     const handleAttachFile = () => {
-        //
+        // Implement file attachment logic
     }
 
     const handleMicrophoneClick = () => {
-        //
+        // Implement microphone logic
     }
 
     return (
@@ -92,35 +71,25 @@ export default function Chat() {
                         {messages.map((message) => (
                             <ChatBubble
                                 key={message.id}
-                                variant={message.sender === "user" ? "sent" : "received"}
+                                variant={message.role === "user" ? "sent" : "received"}
                             >
                                 <ChatBubbleAvatar
                                     className="h-8 w-8 shrink-0"
                                     src={
-                                        message.sender === "user"
+                                        message.role === "user"
                                             ? "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&q=80&crop=faces&fit=crop"
                                             : "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=64&h=64&q=80&crop=faces&fit=crop"
                                     }
-                                    fallback={message.sender === "user" ? "US" : "AI"}
+                                    fallback={message.role === "user" ? "US" : "AI"}
                                 />
                                 <ChatBubbleMessage
-                                    variant={message.sender === "user" ? "sent" : "received"}
+                                    variant={message.role === "user" ? "sent" : "received"}
                                 >
                                     {message.content}
                                 </ChatBubbleMessage>
                             </ChatBubble>
                         ))}
-
-                        {isLoading && (
-                            <ChatBubble variant="received">
-                                <ChatBubbleAvatar
-                                    className="h-8 w-8 shrink-0"
-                                    src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=64&h=64&q=80&crop=faces&fit=crop"
-                                    fallback="AI"
-                                />
-                                <ChatBubbleMessage isLoading />
-                            </ChatBubble>
-                        )}
+                        <div ref={messagesEndRef} />
                     </ChatMessageList>
                 </ExpandableChatBody>
 
@@ -131,7 +100,7 @@ export default function Chat() {
                     >
                         <ChatInput
                             value={input}
-                            onChange={(e) => setInput(e.target.value)}
+                            onChange={handleInputChange}
                             placeholder="Type your message..."
                             className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0"
                         />
@@ -155,8 +124,13 @@ export default function Chat() {
                                     <Mic className="size-4" />
                                 </Button>
                             </div>
-                            <Button type="submit" size="sm" className="ml-auto gap-1.5">
-                                Send Message
+                            <Button
+                                type="submit"
+                                size="sm"
+                                className="ml-auto gap-1.5"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? "Thinking..." : "Send Message"}
                                 <CornerDownLeft className="size-3.5" />
                             </Button>
                         </div>

@@ -1,8 +1,9 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const sessionRoutes = require('./routes/sessionRoutes');
-const messageRoutes = require('./routes/messageRoutes');
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import sessionRoutes from './routes/sessionRoutes.js';
+import messageRoutes from './routes/messageRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -17,6 +18,7 @@ app.use(express.json());
 // Routes
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

@@ -1,7 +1,7 @@
-const express = require('express');
-const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
+import express from 'express';
+import { PrismaClient } from '@prisma/client';
 
+const router = express.Router();
 const prisma = new PrismaClient();
 
 // Create a new message
@@ -41,4 +41,4 @@ router.get('/:sessionId', async (req, res) => {
     }
 });
 
-module.exports = router; 
+export default router; 
