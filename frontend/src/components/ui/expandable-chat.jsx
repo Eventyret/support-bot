@@ -3,9 +3,6 @@ import { X, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-export type ChatPosition = "bottom-right" | "bottom-left";
-export type ChatSize = "sm" | "md" | "lg" | "xl" | "full";
-
 const chatConfig = {
   dimensions: {
     sm: "sm:max-w-sm sm:max-h-[500px]",
@@ -29,13 +26,8 @@ const chatConfig = {
   },
 };
 
-interface ExpandableChatProps extends React.HTMLAttributes<HTMLDivElement> {
-  position?: ChatPosition;
-  size?: ChatSize;
-  icon?: React.ReactNode;
-}
 
-const ExpandableChat: React.FC<ExpandableChatProps> = ({
+const ExpandableChat = ({
   className,
   position = "bottom-right",
   size = "md",
@@ -44,7 +36,7 @@ const ExpandableChat: React.FC<ExpandableChatProps> = ({
   ...props
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const chatRef = useRef<HTMLDivElement>(null);
+  const chatRef = useRef(null);
 
   const toggleChat = () => setIsOpen(!isOpen);
 
@@ -84,7 +76,7 @@ const ExpandableChat: React.FC<ExpandableChatProps> = ({
 
 ExpandableChat.displayName = "ExpandableChat";
 
-const ExpandableChatHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
+const ExpandableChatHeader = ({
   className,
   ...props
 }) => (
@@ -96,28 +88,21 @@ const ExpandableChatHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
 
 ExpandableChatHeader.displayName = "ExpandableChatHeader";
 
-const ExpandableChatBody: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
+const ExpandableChatBody = ({
   className,
   ...props
 }) => <div className={cn("flex-grow overflow-y-auto", className)} {...props} />;
 
 ExpandableChatBody.displayName = "ExpandableChatBody";
 
-const ExpandableChatFooter: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
+const ExpandableChatFooter = ({
   className,
   ...props
 }) => <div className={cn("border-t p-4", className)} {...props} />;
 
 ExpandableChatFooter.displayName = "ExpandableChatFooter";
 
-interface ExpandableChatToggleProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  icon?: React.ReactNode;
-  isOpen: boolean;
-  toggleChat: () => void;
-}
-
-const ExpandableChatToggle: React.FC<ExpandableChatToggleProps> = ({
+const ExpandableChatToggle = ({
   className,
   icon,
   isOpen,

@@ -1,5 +1,3 @@
-import { useState, FormEvent } from "react"
-import { Bot, Paperclip, Mic, CornerDownLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   ChatBubble,
@@ -7,13 +5,15 @@ import {
   ChatBubbleMessage,
 } from "@/components/ui/chat-bubble"
 import { ChatInput } from "@/components/ui/chat-input"
+import { ChatMessageList } from "@/components/ui/chat-message-list"
 import {
   ExpandableChat,
-  ExpandableChatHeader,
   ExpandableChatBody,
   ExpandableChatFooter,
+  ExpandableChatHeader,
 } from "@/components/ui/expandable-chat"
-import { ChatMessageList } from "@/components/ui/chat-message-list"
+import { Bot, CornerDownLeft, Mic, Paperclip } from "lucide-react"
+import { useState } from "react"
 
 export default function App() {
   const [messages, setMessages] = useState([
@@ -37,7 +37,7 @@ export default function App() {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     if (!input.trim()) return
 

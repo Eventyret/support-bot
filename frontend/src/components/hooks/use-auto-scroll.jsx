@@ -1,30 +1,19 @@
 // @hidden
 import { useCallback, useEffect, useRef, useState } from "react";
 
-interface ScrollState {
-    isAtBottom: boolean;
-    autoScrollEnabled: boolean;
-}
-
-interface UseAutoScrollOptions {
-    offset?: number;
-    smooth?: boolean;
-    content?: React.ReactNode;
-}
-
-export function useAutoScroll(options: UseAutoScrollOptions = {}) {
+export function useAutoScroll(options = {}) {
     const { offset = 20, smooth = false, content } = options;
-    const scrollRef = useRef<HTMLDivElement>(null);
+    const scrollRef = useRef(null);
     const lastContentHeight = useRef(0);
     const userHasScrolled = useRef(false);
 
-    const [scrollState, setScrollState] = useState<ScrollState>({
+    const [scrollState, setScrollState] = useState({
         isAtBottom: true,
         autoScrollEnabled: true,
     });
 
     const checkIsAtBottom = useCallback(
-        (element: HTMLElement) => {
+        (element) => {
             const { scrollTop, scrollHeight, clientHeight } = element;
             const distanceToBottom = Math.abs(
                 scrollHeight - scrollTop - clientHeight
@@ -35,7 +24,7 @@ export function useAutoScroll(options: UseAutoScrollOptions = {}) {
     );
 
     const scrollToBottom = useCallback(
-        (instant?: boolean) => {
+        (instant) => {
             if (!scrollRef.current) return;
 
             const targetScrollTop =

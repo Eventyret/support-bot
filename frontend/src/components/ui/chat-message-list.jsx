@@ -3,11 +3,8 @@ import { ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAutoScroll } from "@/components/hooks/use-auto-scroll";
 
-interface ChatMessageListProps extends React.HTMLAttributes<HTMLDivElement> {
-    smooth?: boolean;
-}
 
-const ChatMessageList = React.forwardRef<HTMLDivElement, ChatMessageListProps>(
+const ChatMessageList = React.forwardRef(
     ({ className, children, smooth = false, ...props }, _ref) => {
         const {
             scrollRef,
