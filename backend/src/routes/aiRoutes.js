@@ -1,22 +1,38 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
 import fetch from 'node-fetch';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
-// Stream AI response
+// AI chat endpoint
 router.post('/chat', async (req, res) => {
     try {
         const { messages, sessionId } = req.body;
 
-        // Set headers for streaming
-        res.setHeader('Content-Type', 'text/event-stream');
-        res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('Connection', 'keep-alive');
+        // Log incoming chat request
+        console.log('\n=== INCOMING CHAT REQUEST ===');
+        console.log(`Session ID: ${sessionId || 'New Session'}`);
+        console.log(`Timestamp: ${new Date().toISOString()}`);
+        console.log('Messages:');
+        messages.forEach((msg, index) => {
+            console.log(`  [${index + 1}] ${msg.role.toUpperCase()}: ${msg.content}`);
+        });
+        console.log('=============================\n');
 
-        // TODO: Replace with your n8n webhook URL
+        // Get the latest user message
+        const latestMessage = messages[messages.length - 1];
+
+        // Format the request body for n8n
+        const requestBody = {
+            message: latestMessage.content,
+            role: latestMessage.role,
+            sessionId: sessionId || null,
+            timestamp: new Date().toISOString()
+        };
+
+        console.log('Sending to n8n:', JSON.stringify(requestBody, null, 2));
+
         const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+        console.log(`Forwarding request to n8n webhook: ${n8nWebhookUrl}`);
 
         // Send request to n8n
         const response = await fetch(n8nWebhookUrl, {
@@ -24,37 +40,71 @@ router.post('/chat', async (req, res) => {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                messages,
-                sessionId,
-            }),
+            body: JSON.stringify(requestBody),
         });
 
-        // Handle streaming response from n8n
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
+        // Get the response data regardless of status code
+        const responseData = await response.json();
+        console.log('Received from n8n:', JSON.stringify(responseData, null, 2));
 
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+        // Check if the response was successful
+        if (!response.ok) {
+            // If n8n returned an error, try to extract the error message
+            const errorMessage = responseData.message || responseData.error || 'Unknown error from n8n';
+            const errorHint = responseData.hint || '';
+            console.error(`n8n error: ${errorMessage}`);
 
-            const chunk = decoder.decode(value);
-            res.write(`data: ${chunk}\n\n`);
+            // Return a regular JSON error response
+            return res.status(response.status).json({
+                id: `chat_error_${Date.now()}`,
+                role: 'assistant',
+                content: `Error: ${errorMessage}${errorHint ? `\n\nHint: ${errorHint}` : ''}`,
+                createdAt: new Date()
+            });
         }
 
-        // Save the complete response to the database
-        const aiResponse = await prisma.message.create({
-            data: {
-                content: messages[messages.length - 1].content,
-                role: 'assistant',
-                sessionId,
-            },
-        });
+        // Extract the response from n8n's format
+        let n8nResponse;
+        if (Array.isArray(responseData) && responseData.length > 0) {
+            // If n8n returns an array, try to find the response in the first item
+            n8nResponse = responseData[0].output || responseData[0].response || responseData[0].message || responseData[0].content || 'No response from n8n';
+        } else if (typeof responseData === 'object') {
+            // If n8n returns an object, try to find the response in the object
+            n8nResponse = responseData.output || responseData.response || responseData.message || responseData.content || 'No response from n8n';
+        } else {
+            // If n8n returns a string, use it directly
+            n8nResponse = responseData;
+        }
 
-        res.end();
+        // Log the complete response
+        console.log('\n=== AI RESPONSE ===');
+        console.log(`Session ID: ${sessionId || 'New Session'}`);
+        console.log(`Timestamp: ${new Date().toISOString()}`);
+        console.log(`Response: ${n8nResponse}`);
+        console.log('==================\n');
+
+        // Return a regular JSON response
+        res.json({
+            id: `chat_${Date.now()}`,
+            role: 'assistant',
+            content: n8nResponse,
+            createdAt: new Date()
+        });
     } catch (error) {
         console.error('Error in AI chat:', error);
-        res.status(500).json({ error: 'Failed to get AI response' });
+        console.error('Error details:', {
+            message: error.message,
+            stack: error.stack,
+            timestamp: new Date().toISOString()
+        });
+
+        // Return a regular JSON error response
+        res.status(500).json({
+            id: `chat_error_${Date.now()}`,
+            role: 'assistant',
+            content: `Error: ${error.message || 'An unknown error occurred'}`,
+            createdAt: new Date()
+        });
     }
 });
 

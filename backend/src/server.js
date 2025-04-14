@@ -1,9 +1,9 @@
-import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import sessionRoutes from './routes/sessionRoutes.js';
-import messageRoutes from './routes/messageRoutes.js';
+import express from 'express';
 import aiRoutes from './routes/aiRoutes.js';
+import messageRoutes from './routes/messageRoutes.js';
+import sessionRoutes from './routes/sessionRoutes.js';
 
 // Load environment variables
 dotenv.config();
