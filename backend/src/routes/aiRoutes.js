@@ -1,9 +1,10 @@
 import express from 'express';
 import fetch from 'node-fetch';
-import { PrismaClient } from '@prisma/client';
+import { connectDB } from '../lib/mongoose.js';
+import Session from '../models/Session.js';
+import Message from '../models/Message.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // AI chat endpoint
 router.post('/chat', async (req, res) => {
@@ -15,15 +16,20 @@ router.post('/chat', async (req, res) => {
             return res.status(400).json({ error: 'Session ID is required' });
         }
 
-        // Check if session exists, create if not
-        let session = await prisma.session.findUnique({
-            where: { id: sessionId }
-        });
+        // Connect to MongoDB
+        await connectDB();
 
+        // Check if session exists
+        let session = await Session.findById(sessionId);
+
+        // If session doesn't exist, create it
         if (!session) {
-            session = await prisma.session.create({
-                data: { id: sessionId }
+            console.log(`Session ${sessionId} not found, creating new session`);
+            session = await Session.create({
+                _id: sessionId
             });
+        } else {
+            console.log(`Using existing session: ${sessionId}`);
         }
 
         // Log incoming chat request
@@ -39,21 +45,39 @@ router.post('/chat', async (req, res) => {
         // Get the latest user message
         const latestMessage = messages[messages.length - 1];
 
-        // Store the user message in MongoDB
-        await prisma.message.create({
-            data: {
+        // Check if this message already exists in the database to prevent duplicates
+        const existingMessage = await Message.findOne({
+            content: latestMessage.content,
+            role: latestMessage.role,
+            sessionId: sessionId,
+            createdAt: {
+                $gte: new Date(Date.now() - 5000) // Within the last 5 seconds
+            }
+        });
+
+        // Only create a new message if it doesn't already exist
+        if (!existingMessage) {
+            // Store the user message in MongoDB
+            await Message.create({
                 content: latestMessage.content,
                 role: latestMessage.role,
                 sessionId: sessionId
-            }
-        });
+            });
+        } else {
+            console.log('Message already exists, skipping creation');
+        }
 
         // Format the request body for n8n
         const requestBody = {
             message: latestMessage.content,
             role: latestMessage.role,
             sessionId: sessionId,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            // Include message history for context
+            messageHistory: messages.map(msg => ({
+                role: msg.role,
+                content: msg.content
+            }))
         };
 
         console.log('Sending to n8n:', JSON.stringify(requestBody, null, 2));
@@ -93,12 +117,10 @@ router.post('/chat', async (req, res) => {
             console.error(`n8n error: ${errorMessage}`);
 
             // Store the error message in MongoDB
-            await prisma.message.create({
-                data: {
-                    content: `Error: ${errorMessage}${errorHint ? `\n\nHint: ${errorHint}` : ''}`,
-                    role: 'assistant',
-                    sessionId: sessionId
-                }
+            await Message.create({
+                content: `Error: ${errorMessage}${errorHint ? `\n\nHint: ${errorHint}` : ''}`,
+                role: 'assistant',
+                sessionId: sessionId
             });
 
             // Return a regular JSON error response
@@ -124,12 +146,10 @@ router.post('/chat', async (req, res) => {
         }
 
         // Store the assistant's response in MongoDB
-        await prisma.message.create({
-            data: {
-                content: n8nResponse,
-                role: 'assistant',
-                sessionId: sessionId
-            }
+        await Message.create({
+            content: n8nResponse,
+            role: 'assistant',
+            sessionId: sessionId
         });
 
         // Log the complete response
@@ -164,6 +184,49 @@ router.post('/chat', async (req, res) => {
             content: `Error: ${error.message || 'An unknown error occurred'}`,
             createdAt: new Date()
         });
+    }
+});
+
+// Get chat history for a session
+router.get('/chat/:sessionId', async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+
+        // Validate session ID
+        if (!sessionId) {
+            return res.status(400).json({ error: 'Session ID is required' });
+        }
+
+        // Connect to MongoDB
+        await connectDB();
+
+        // Find the session
+        const session = await Session.findById(sessionId);
+
+        if (!session) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
+
+        // Find all messages for this session
+        const messages = await Message.find({ sessionId }).sort({ createdAt: 1 });
+
+        // Format messages for the frontend
+        const formattedMessages = messages.map(msg => ({
+            id: msg._id,
+            role: msg.role,
+            content: msg.content,
+            createdAt: msg.createdAt
+        }));
+
+        res.json({
+            sessionId: session._id,
+            messages: formattedMessages,
+            createdAt: session.createdAt,
+            updatedAt: session.updatedAt
+        });
+    } catch (error) {
+        console.error('Error fetching chat history:', error);
+        res.status(500).json({ error: 'Failed to fetch chat history' });
     }
 });
 

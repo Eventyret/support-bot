@@ -21,16 +21,47 @@ export default function Chat() {
     const [messages, setMessages] = useState([])
     const [input, setInput] = useState("")
     const [isLoading, setIsLoading] = useState(false)
+    const [isInitializing, setIsInitializing] = useState(true)
     const messagesEndRef = useRef(null)
     const inputRef = useRef(null)
 
     const apiURL = `${import.meta.env.VITE_BACKEND_URL}/api/ai/chat`
     const sessionApiURL = `${import.meta.env.VITE_BACKEND_URL}/api/sessions`
 
-    // Create a session when the component mounts
+    // Initialize session when the component mounts
     useEffect(() => {
-        const createSession = async () => {
+        const initializeSession = async () => {
             try {
+                setIsInitializing(true);
+
+                // Check if we already have a session ID in localStorage
+                const storedSessionId = localStorage.getItem('chatSessionId');
+
+                if (storedSessionId) {
+                    // Verify the session exists on the backend
+                    try {
+                        const response = await fetch(`${sessionApiURL}/${storedSessionId}`);
+                        if (response.ok) {
+                            // Session exists, use it
+                            setSessionId(storedSessionId);
+                            console.log('Using existing session:', storedSessionId);
+
+                            // Load existing messages
+                            const sessionData = await response.json();
+                            if (sessionData.messages && sessionData.messages.length > 0) {
+                                setMessages(sessionData.messages);
+                            }
+
+                            setError(null);
+                            return;
+                        }
+                    } catch (error) {
+                        console.error('Error verifying session:', error);
+                        // Continue to create a new session if verification fails
+                    }
+                }
+
+                // Create a new session if we don't have one or the existing one is invalid
                 const response = await fetch(sessionApiURL, {
                     method: 'POST',
                     headers: {
@@ -43,15 +74,24 @@ export default function Chat() {
                 }
 
                 const data = await response.json();
-                setSessionId(data.id);
-                console.log('Session created:', data.id);
+                const newSessionId = data._id || data.id;
+
+                // Store the session ID in localStorage
+                localStorage.setItem('chatSessionId', newSessionId);
+
+                setSessionId(newSessionId);
+                console.log('New session created:', newSessionId);
+                setError(null);
             } catch (error) {
-                console.error('Error creating session:', error);
-                setError('Failed to initialize chat session');
+                console.error('Error initializing session:', error);
+                // Don't show technical errors to the user
+                setError('We\'re having trouble connecting to the chat service. Please try again later.');
+            } finally {
+                setIsInitializing(false);
             }
         };
 
-        createSession();
+        initializeSession();
     }, []);
 
     // Handle input change
@@ -118,18 +158,12 @@ export default function Chat() {
                 body: JSON.stringify(requestBody),
             })
 
-            // Check if we got a new session ID
-            const newSessionId = response.headers.get('x-session-id')
-            if (newSessionId && !sessionId) {
-                setSessionId(newSessionId)
-            }
-
             // Parse the response
             const data = await response.json()
 
             if (!response.ok) {
-                // Handle error response
-                const errorMessage = data.content || data.error || 'An error occurred while chatting'
+                // Handle error response with a user-friendly message
+                const errorMessage = 'Sorry, I encountered an issue processing your request. Please try again.';
                 setError(errorMessage)
                 return
             }
@@ -148,20 +182,8 @@ export default function Chat() {
         } catch (error) {
             console.error('Chat error:', error)
 
-            // Extract detailed error message if available
-            let errorMessage = 'An error occurred while chatting'
-            if (error.response) {
-                try {
-                    const errorData = await error.response.json()
-                    errorMessage = errorData.content || errorData.error || error.message || errorMessage
-                } catch {
-                    errorMessage = error.message || errorMessage
-                }
-            } else {
-                errorMessage = error.message || errorMessage
-            }
-
-            setError(errorMessage)
+            // Use a user-friendly error message
+            setError('Sorry, I\'m having trouble connecting right now. Please try again in a moment.')
         } finally {
             setIsLoading(false)
         }
@@ -285,7 +307,7 @@ export default function Chat() {
                             onKeyDown={handleKeyDown}
                             placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
                             className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0"
-                            disabled={isLoading}
+                            disabled={isLoading || isInitializing}
                         />
                         <div className="flex items-center p-3 pt-0 justify-between">
                             <div className="flex">
@@ -294,7 +316,7 @@ export default function Chat() {
                                     size="icon"
                                     type="button"
                                     onClick={handleAttachFile}
-                                    disabled={isLoading}
+                                    disabled={isLoading || isInitializing}
                                 >
                                     <Paperclip className="size-4" />
                                 </Button>
@@ -304,7 +326,7 @@ export default function Chat() {
                                     size="icon"
                                     type="button"
                                     onClick={handleMicrophoneClick}
-                                    disabled={isLoading}
+                                    disabled={isLoading || isInitializing}
                                 >
                                     <Mic className="size-4" />
                                 </Button>
@@ -313,7 +335,7 @@ export default function Chat() {
                                 type="submit"
                                 size="sm"
                                 className="ml-auto gap-1.5"
-                                disabled={isLoading || !input.trim()}
+                                disabled={isLoading || isInitializing || !input.trim()}
                             >
                                 {isLoading ? "Thinking..." : "Send Message"}
                                 <CornerDownLeft className="size-3.5" />

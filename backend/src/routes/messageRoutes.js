@@ -1,8 +1,8 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import { connectDB } from '../lib/mongoose.js';
+import Message from '../models/Message.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // Create a new message
 router.post('/', async (req, res) => {
@@ -13,16 +13,18 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        const message = await prisma.message.create({
-            data: {
-                content,
-                role,
-                sessionId
-            }
+        // Connect to MongoDB
+        await connectDB();
+
+        const message = await Message.create({
+            content,
+            role,
+            sessionId
         });
 
         res.json(message);
     } catch (error) {
+        console.error('Error creating message:', error);
         res.status(500).json({ error: 'Failed to create message' });
     }
 });
@@ -30,13 +32,16 @@ router.post('/', async (req, res) => {
 // Get messages for a session
 router.get('/:sessionId', async (req, res) => {
     try {
-        const messages = await prisma.message.findMany({
-            where: { sessionId: req.params.sessionId },
-            orderBy: { createdAt: 'asc' }
-        });
+        // Connect to MongoDB
+        await connectDB();
+
+        const messages = await Message.find({
+            sessionId: req.params.sessionId
+        }).sort({ createdAt: 1 });
 
         res.json(messages);
     } catch (error) {
+        console.error('Error fetching messages:', error);
         res.status(500).json({ error: 'Failed to fetch messages' });
     }
 });
