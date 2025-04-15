@@ -43,9 +43,20 @@ router.post('/chat', async (req, res) => {
             body: JSON.stringify(requestBody),
         });
 
-        // Get the response data regardless of status code
-        const responseData = await response.json();
-        console.log('Received from n8n:', JSON.stringify(responseData, null, 2));
+        // Get the response data
+        let responseData;
+        const contentType = response.headers.get('content-type');
+
+        if (contentType && contentType.includes('application/json')) {
+            // Parse JSON response
+            responseData = await response.json();
+            console.log('Received from n8n:', JSON.stringify(responseData, null, 2));
+        } else {
+            // Handle plain text response
+            const textResponse = await response.text();
+            console.log('Received from n8n (text):', textResponse);
+            responseData = { output: textResponse };
+        }
 
         // Check if the response was successful
         if (!response.ok) {
@@ -83,13 +94,16 @@ router.post('/chat', async (req, res) => {
         console.log(`Response: ${n8nResponse}`);
         console.log('==================\n');
 
-        // Return a regular JSON response
-        res.json({
+        // Format the response for the frontend
+        const formattedResponse = {
             id: `chat_${Date.now()}`,
             role: 'assistant',
             content: n8nResponse,
             createdAt: new Date()
-        });
+        };
+
+        // Return the formatted response
+        res.json(formattedResponse);
     } catch (error) {
         console.error('Error in AI chat:', error);
         console.error('Error details:', {

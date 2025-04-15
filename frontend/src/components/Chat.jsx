@@ -106,8 +106,16 @@ export default function Chat() {
                 return
             }
 
+            // Format the assistant message
+            const assistantMessage = {
+                id: data.id || `assistant_${Date.now()}`,
+                role: 'assistant',
+                content: data.content,
+                createdAt: data.createdAt || new Date()
+            }
+
             // Add assistant message to the chat
-            setMessages(prev => [...prev, data])
+            setMessages(prev => [...prev, assistantMessage])
 
         } catch (error) {
             console.error('Chat error:', error)
@@ -185,7 +193,12 @@ export default function Chat() {
                                 <ChatBubbleMessage
                                     variant={message.role === "user" ? "sent" : "received"}
                                 >
-                                    {message.content}
+                                    {message.content.split('\n').map((line, i) => (
+                                        <React.Fragment key={i}>
+                                            {line}
+                                            {i < message.content.split('\n').length - 1 && <br />}
+                                        </React.Fragment>
+                                    ))}
                                 </ChatBubbleMessage>
                             </ChatBubble>
                         ))}
