@@ -11,7 +11,7 @@ datasource db {
 }
 
 model Session {
-    id        String    @id @default(auto()) @map("_id") @db.ObjectId
+    id        String    @id @map("_id")
     createdAt DateTime  @default(now())
     updatedAt DateTime  @updatedAt
     messages  Message[]
@@ -23,5 +23,5 @@ model Message {
     role      String // 'user' or 'assistant'
     createdAt DateTime @default(now())
     session   Session  @relation(fields: [sessionId], references: [id])
-    sessionId String   @db.ObjectId
+    sessionId String
 }

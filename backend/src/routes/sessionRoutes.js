@@ -1,5 +1,6 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
+import crypto from 'crypto';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -7,11 +8,18 @@ const prisma = new PrismaClient();
 // Create a new session
 router.post('/', async (req, res) => {
     try {
+        // Generate a random, anonymous session ID
+        const sessionId = crypto.randomBytes(16).toString('hex');
+
         const session = await prisma.session.create({
-            data: {}
+            data: {
+                id: sessionId
+            }
         });
+
         res.json(session);
     } catch (error) {
+        console.error('Error creating session:', error);
         res.status(500).json({ error: 'Failed to create session' });
     }
 });

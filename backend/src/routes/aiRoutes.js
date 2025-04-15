@@ -1,16 +1,34 @@
 import express from 'express';
 import fetch from 'node-fetch';
+import { PrismaClient } from '@prisma/client';
 
 const router = express.Router();
+const prisma = new PrismaClient();
 
 // AI chat endpoint
 router.post('/chat', async (req, res) => {
     try {
         const { messages, sessionId } = req.body;
 
+        // Validate session ID
+        if (!sessionId) {
+            return res.status(400).json({ error: 'Session ID is required' });
+        }
+
+        // Check if session exists, create if not
+        let session = await prisma.session.findUnique({
+            where: { id: sessionId }
+        });
+
+        if (!session) {
+            session = await prisma.session.create({
+                data: { id: sessionId }
+            });
+        }
+
         // Log incoming chat request
         console.log('\n=== INCOMING CHAT REQUEST ===');
-        console.log(`Session ID: ${sessionId || 'New Session'}`);
+        console.log(`Session ID: ${sessionId}`);
         console.log(`Timestamp: ${new Date().toISOString()}`);
         console.log('Messages:');
         messages.forEach((msg, index) => {
@@ -21,11 +39,20 @@ router.post('/chat', async (req, res) => {
         // Get the latest user message
         const latestMessage = messages[messages.length - 1];
 
+        // Store the user message in MongoDB
+        await prisma.message.create({
+            data: {
+                content: latestMessage.content,
+                role: latestMessage.role,
+                sessionId: sessionId
+            }
+        });
+
         // Format the request body for n8n
         const requestBody = {
             message: latestMessage.content,
             role: latestMessage.role,
-            sessionId: sessionId || null,
+            sessionId: sessionId,
             timestamp: new Date().toISOString()
         };
 
@@ -65,6 +92,15 @@ router.post('/chat', async (req, res) => {
             const errorHint = responseData.hint || '';
             console.error(`n8n error: ${errorMessage}`);
 
+            // Store the error message in MongoDB
+            await prisma.message.create({
+                data: {
+                    content: `Error: ${errorMessage}${errorHint ? `\n\nHint: ${errorHint}` : ''}`,
+                    role: 'assistant',
+                    sessionId: sessionId
+                }
+            });
+
             // Return a regular JSON error response
             return res.status(response.status).json({
                 id: `chat_error_${Date.now()}`,
@@ -87,9 +123,18 @@ router.post('/chat', async (req, res) => {
             n8nResponse = responseData;
         }
 
+        // Store the assistant's response in MongoDB
+        await prisma.message.create({
+            data: {
+                content: n8nResponse,
+                role: 'assistant',
+                sessionId: sessionId
+            }
+        });
+
         // Log the complete response
         console.log('\n=== AI RESPONSE ===');
-        console.log(`Session ID: ${sessionId || 'New Session'}`);
+        console.log(`Session ID: ${sessionId}`);
         console.log(`Timestamp: ${new Date().toISOString()}`);
         console.log(`Response: ${n8nResponse}`);
         console.log('==================\n');

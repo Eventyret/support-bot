@@ -25,6 +25,34 @@ export default function Chat() {
     const inputRef = useRef(null)
 
     const apiURL = `${import.meta.env.VITE_BACKEND_URL}/api/ai/chat`
+    const sessionApiURL = `${import.meta.env.VITE_BACKEND_URL}/api/sessions`
+
+    // Create a session when the component mounts
+    useEffect(() => {
+        const createSession = async () => {
+            try {
+                const response = await fetch(sessionApiURL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create session');
+                }
+
+                const data = await response.json();
+                setSessionId(data.id);
+                console.log('Session created:', data.id);
+            } catch (error) {
+                console.error('Error creating session:', error);
+                setError('Failed to initialize chat session');
+            }
+        };
+
+        createSession();
+    }, []);
 
     // Handle input change
     const handleInputChange = (e) => {
