@@ -222,6 +222,9 @@ jobs:
           
       - name: Checkout repository
         uses: actions/checkout@v3
+      
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y jq
         
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -231,9 +234,42 @@ jobs:
       - name: Get deployment URLs
         working-directory: ./infra
         run: |
+          # Initialize terraform to access remote state
+          terraform init -reconfigure -backend=true
+          
           # Store Terraform outputs in environment variables
-          BACKEND_URL=$(terraform output -raw alb_dns_name 2>/dev/null || echo "Not available")
-          FRONTEND_URL=$(terraform output -raw frontend_website_endpoint 2>/dev/null || echo "Not available")
+          echo "Retrieving deployment URLs from Terraform state..."
+          BACKEND_URL=$(terraform output -raw alb_dns_name 2>/dev/null || echo "")
+          FRONTEND_URL=$(terraform output -raw frontend_website_endpoint 2>/dev/null || echo "")
+          
+          # Fallback to AWS CLI if Terraform outputs fail
+          if [[ -z "$BACKEND_URL" ]]; then
+            echo "Retrieving backend URL via AWS CLI..."
+            CLUSTER_NAME=$(aws ecs list-clusters | jq -r '.clusterArns[] | select(contains("support-bot-prod-cluster"))' | xargs basename 2>/dev/null || echo "")
+            SERVICE_NAME=$(aws ecs list-services --cluster "$CLUSTER_NAME" | jq -r '.serviceArns[] | select(contains("support-bot-prod-service"))' | xargs basename 2>/dev/null || echo "")
+            
+            if [[ -n "$CLUSTER_NAME" && -n "$SERVICE_NAME" ]]; then
+              LB_ARN=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE_NAME" | jq -r '.services[0].loadBalancers[0].targetGroupArn' 2>/dev/null || echo "")
+              if [[ -n "$LB_ARN" ]]; then
+                LB_NAME=$(aws elbv2 describe-target-groups --target-group-arns "$LB_ARN" | jq -r '.TargetGroups[0].LoadBalancerArns[0]' | xargs basename 2>/dev/null || echo "")
+                if [[ -n "$LB_NAME" ]]; then
+                  BACKEND_URL=$(aws elbv2 describe-load-balancers --load-balancer-arns "$LB_NAME" | jq -r '.LoadBalancers[0].DNSName' 2>/dev/null || echo "")
+                fi
+              fi
+            fi
+          fi
+          
+          if [[ -z "$FRONTEND_URL" ]]; then
+            echo "Retrieving frontend URL via AWS CLI..."
+            BUCKET_NAME=$(aws s3 ls | grep support-bot-frontend-prod | awk '{print $3}' 2>/dev/null || echo "")
+            if [[ -n "$BUCKET_NAME" ]]; then
+              FRONTEND_URL="$BUCKET_NAME.s3-website.eu-west-2.amazonaws.com"
+            fi
+          fi
+          
+          # Use default messages if still not available
+          BACKEND_URL=${BACKEND_URL:-"Not available - check AWS Console"}
+          FRONTEND_URL=${FRONTEND_URL:-"Not available - check AWS Console"}
           
           # Save to GitHub env
           echo "BACKEND_URL=${BACKEND_URL}" >> $GITHUB_ENV
