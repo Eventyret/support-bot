@@ -28,6 +28,11 @@ output "frontend_website_endpoint" {
   value       = module.s3_frontend.website_endpoint
 }
 
+output "alb_dns_name" {
+  description = "DNS name of the Application Load Balancer for backend"
+  value       = module.ecs.alb_dns_name
+}
+
 output "ecs_cluster_name" {
   description = "Name of the ECS cluster"
   value       = module.ecs.cluster_name
@@ -42,4 +47,4 @@ output "secrets_arn" {
   description = "ARN of the Secrets Manager secret"
   value       = module.secrets.secrets_arn
   sensitive   = true
-} 
+}

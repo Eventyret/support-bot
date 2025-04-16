@@ -48,9 +48,40 @@ jobs:
     needs: [infrastructure, backend, frontend]
     runs-on: ubuntu-latest
     steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+          
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_wrapper: false
+          
+      - name: Get deployment URLs
+        working-directory: ./infra
+        run: |
+          # Store Terraform outputs in environment variables
+          BACKEND_URL=$(terraform output -raw alb_dns_name 2>/dev/null || echo "Not available")
+          FRONTEND_URL=$(terraform output -raw frontend_website_endpoint 2>/dev/null || echo "Not available")
+          
+          # Save to GitHub env
+          echo "BACKEND_URL=${BACKEND_URL}" >> $GITHUB_ENV
+          echo "FRONTEND_URL=${FRONTEND_URL}" >> $GITHUB_ENV
+        
       - name: Deployment Summary
         run: |
           echo "✅ Infrastructure deployment completed"
           echo "✅ Backend deployment completed"
           echo "✅ Frontend deployment completed"
-          echo "🎉 Full deployment pipeline complete!" 
+          echo "🎉 Full deployment pipeline complete!"
+          echo ""
+          echo "📱 Frontend URL: http://${{ env.FRONTEND_URL }}"
+          echo "🔌 Backend URL: http://${{ env.BACKEND_URL }}"
+          echo ""
+          echo "Note: It may take a few minutes for DNS to propagate and services to be fully available." 
