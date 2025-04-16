@@ -1,7 +1,12 @@
 import Agenda from 'agenda';
 import { cleanupOldChats } from './cleanup.js';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Check if DATABASE_URL is defined
+// Use the direct absolute path to the .env file in the project root
+dotenv.config({ path: '/Users/eventyret/Development/support-bot/.env' });
+
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
     console.error('DATABASE_URL is undefined. Agenda initialization will fail.');

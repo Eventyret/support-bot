@@ -1,4 +1,16 @@
 import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+
+// Use the direct absolute path to the .env file in the project root
+const envPath = '/Users/eventyret/Development/support-bot/.env';
+
+console.log('Attempting to load .env from:', envPath);
+console.log('This file exists:', fs.existsSync(envPath));
+
+dotenv.config({ path: envPath });
 
 const globalForMongoose = global;
 
