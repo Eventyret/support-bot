@@ -16,6 +16,11 @@ on:
         required: false
         default: false
         type: boolean
+      force_unlock:
+        description: 'Force unlock Terraform state if locked'
+        required: false
+        default: true
+        type: boolean
   workflow_call:
     inputs:
       environment:
@@ -27,6 +32,11 @@ on:
         description: 'Skip ECS service import (use if import hangs)'
         required: false
         default: false
+        type: boolean
+      force_unlock:
+        description: 'Force unlock Terraform state if locked'
+        required: false
+        default: true
         type: boolean
 
 env:
@@ -100,6 +110,36 @@ jobs:
       working-directory: ./infra
       run: tofu init
     
+    - name: Force Unlock Terraform State
+      if: inputs.force_unlock == true || github.event.inputs.force_unlock == 'true'
+      working-directory: ./infra
+      run: |
+        echo "Checking for and removing any existing state locks..."
+        
+        # Get the current locks from DynamoDB
+        LOCKS=$(aws dynamodb scan --table-name support-bot-terraform-locks --query "Items[*].LockID.S" --output text || echo "")
+        
+        if [[ -n "$LOCKS" ]]; then
+          echo "Found existing locks. Attempting to force unlock..."
+          
+          # For each lock, attempt to force unlock it
+          for LOCK_ID in $LOCKS; do
+            echo "Unlocking state with lock ID: $LOCK_ID"
+            # Force unlock without asking for confirmation (-force flag)
+            tofu force-unlock -force "$LOCK_ID" || echo "Failed to unlock $LOCK_ID, continuing anyway..."
+          done
+          
+          # Directly remove locks from DynamoDB as a fallback
+          echo "Directly removing locks from DynamoDB table..."
+          for LOCK_ID in $LOCKS; do
+            aws dynamodb delete-item \
+              --table-name support-bot-terraform-locks \
+              --key "{\"LockID\": {\"S\": \"$LOCK_ID\"}}" || echo "Failed to delete lock $LOCK_ID from DynamoDB"
+          done
+        else
+          echo "No existing locks found."
+        fi
+    
     - name: Check if ECS service exists
       id: check_ecs
       working-directory: ./infra
@@ -125,8 +165,8 @@ jobs:
         # First try to create state file if it doesn't exist
         touch terraform.tfstate || true
         
-        # Run import with increased verbosity and a timeout
-        if timeout 90s tofu import -input=false module.ecs.aws_ecs_service.backend_update support-bot-prod-cluster/support-bot-prod-service; then
+        # Run import with increased verbosity, no lock, and a timeout
+        if timeout 90s tofu import -input=false -lock=false module.ecs.aws_ecs_service.backend_update support-bot-prod-cluster/support-bot-prod-service; then
           echo "Import completed successfully"
         else
           echo "Import timed out or failed. This is not fatal - will continue with apply."
@@ -146,7 +186,7 @@ jobs:
         TF_VAR_n8n_webhook_url: ${{ secrets.TF_VAR_N8N_WEBHOOK_URL }}
         TF_VAR_cleanup_api_key: ${{ secrets.TF_VAR_CLEANUP_API_KEY }}
         TF_VAR_n8n_encryption_key: ${{ secrets.TF_VAR_N8N_ENCRYPTION_KEY }}
-      run: tofu plan -input=false
+      run: tofu plan -input=false -lock=false
     
     - name: OpenTofu Apply
       working-directory: ./infra
@@ -157,7 +197,7 @@ jobs:
         TF_VAR_n8n_webhook_url: ${{ secrets.TF_VAR_N8N_WEBHOOK_URL }}
         TF_VAR_cleanup_api_key: ${{ secrets.TF_VAR_CLEANUP_API_KEY }}
         TF_VAR_n8n_encryption_key: ${{ secrets.TF_VAR_N8N_ENCRYPTION_KEY }}
-      run: tofu apply -auto-approve -input=false
+      run: tofu apply -auto-approve -input=false -lock=false
       
     - name: Set Output
       id: set_output
