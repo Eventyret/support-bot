@@ -104,6 +104,13 @@ resource "aws_ecs_service" "backend" {
     assign_public_ip = false
   }
 
+  # Add the load balancer configuration
+  load_balancer {
+    target_group_arn = aws_lb_target_group.backend.arn
+    container_name   = "${var.project_name}-${var.environment}-backend"
+    container_port   = var.container_port
+  }
+
   lifecycle {
     ignore_changes = [task_definition, desired_count]
   }
@@ -221,38 +228,4 @@ resource "aws_lb_listener" "http" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.backend.arn
   }
-}
-
-# Update ECS service to use the ALB
-resource "aws_ecs_service" "backend_update" {
-  # Use the same attributes as the original service
-  name                               = "${var.project_name}-${var.environment}-service"
-  cluster                            = aws_ecs_cluster.main.id
-  task_definition                    = aws_ecs_task_definition.backend.arn
-  desired_count                      = var.desired_count
-  deployment_minimum_healthy_percent = 50
-  deployment_maximum_percent         = 200
-  launch_type                        = "FARGATE"
-  scheduling_strategy                = "REPLICA"
-
-  network_configuration {
-    security_groups  = [aws_security_group.ecs_service.id]
-    subnets          = var.private_subnets
-    assign_public_ip = false
-  }
-
-  # Add the load balancer configuration
-  load_balancer {
-    target_group_arn = aws_lb_target_group.backend.arn
-    container_name   = "${var.project_name}-${var.environment}-backend"
-    container_port   = var.container_port
-  }
-
-  lifecycle {
-    ignore_changes        = [task_definition, desired_count]
-    create_before_destroy = true
-  }
-
-  # Avoid conflict with the original service
-  depends_on = [aws_ecs_service.backend]
 }

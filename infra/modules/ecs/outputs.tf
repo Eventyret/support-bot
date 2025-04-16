@@ -10,7 +10,7 @@ output "cluster_id" {
 
 output "service_name" {
   description = "Name of the ECS service"
-  value       = aws_ecs_service.backend_update.name
+  value       = aws_ecs_service.backend.name
 }
 
 output "task_definition_arn" {
@@ -21,4 +21,4 @@ output "task_definition_arn" {
 output "alb_dns_name" {
   description = "DNS name of the Application Load Balancer"
   value       = aws_lb.main.dns_name
-} 
+}
