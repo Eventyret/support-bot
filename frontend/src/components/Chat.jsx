@@ -13,7 +13,7 @@ import {
     ExpandableChatFooter,
     ExpandableChatHeader,
 } from "@/components/ui/expandable-chat"
-import { Bot, CornerDownLeft, Mic, Paperclip, Trash2 } from "lucide-react"
+import { Bot, CornerDownLeft, Trash2 } from "lucide-react"
 
 export default function Chat() {
     const [sessionId, setSessionId] = useState(null)
@@ -208,14 +208,6 @@ export default function Chat() {
         }
     }
 
-    const handleAttachFile = () => {
-        // Implement file attachment logic
-    }
-
-    const handleMicrophoneClick = () => {
-        // Implement microphone logic
-    }
-
     // Handle keyboard events for the chat input
     const handleKeyDown = (e) => {
         // Submit on Enter (without Shift)
@@ -237,19 +229,10 @@ export default function Chat() {
                 icon={<Bot className="h-6 w-6" />}
             >
                 <ExpandableChatHeader className="flex-col text-center justify-center">
-                    <h1 className="text-xl font-semibold">Chat with AI ✨</h1>
+                    <h1 className="text-xl font-semibold">Chat with Cognito ✨</h1>
                     <p className="text-sm text-muted-foreground">
                         Ask me anything about the components
                     </p>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="mt-2 text-xs text-muted-foreground hover:text-destructive"
-                        onClick={clearSession}
-                    >
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        Clear Session
-                    </Button>
                 </ExpandableChatHeader>
 
                 <ExpandableChatBody>
@@ -338,27 +321,18 @@ export default function Chat() {
                             disabled={isLoading || isInitializing}
                         />
                         <div className="flex items-center p-3 pt-0 justify-between">
-                            <div className="flex">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    type="button"
-                                    onClick={handleAttachFile}
-                                    disabled={isLoading || isInitializing}
-                                >
-                                    <Paperclip className="size-4" />
-                                </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs text-muted-foreground hover:text-destructive"
+                                onClick={clearSession}
+                                type="button"
+                                disabled={isLoading || isInitializing}
+                            >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Clear Session
+                            </Button>
 
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    type="button"
-                                    onClick={handleMicrophoneClick}
-                                    disabled={isLoading || isInitializing}
-                                >
-                                    <Mic className="size-4" />
-                                </Button>
-                            </div>
                             <Button
                                 type="submit"
                                 size="sm"
