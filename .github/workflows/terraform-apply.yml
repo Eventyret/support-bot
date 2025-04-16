@@ -158,6 +158,13 @@ jobs:
       id: import_ecs
       working-directory: ./infra
       timeout-minutes: 2
+      env:
+        TF_VAR_mongodb_uri: ${{ secrets.TF_VAR_DATABASE_URL }}
+        TF_VAR_environment: ${{ inputs.environment || github.event.inputs.environment }}
+        TF_VAR_node_env: ${{ secrets.TF_VAR_NODE_ENV || 'production' }}
+        TF_VAR_n8n_webhook_url: ${{ secrets.TF_VAR_N8N_WEBHOOK_URL || '' }}
+        TF_VAR_cleanup_api_key: ${{ secrets.TF_VAR_CLEANUP_API_KEY || '' }}
+        TF_VAR_n8n_encryption_key: ${{ secrets.TF_VAR_N8N_ENCRYPTION_KEY || '' }}
       run: |
         echo "Importing existing ECS service into Terraform state..."
         echo "Using command: tofu import module.ecs.aws_ecs_service.backend support-bot-prod-cluster/support-bot-prod-service"
