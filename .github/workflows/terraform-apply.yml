@@ -47,8 +47,10 @@ jobs:
     
     - name: Create S3 bucket for Terraform state
       run: |
-        BUCKET_EXISTS=$(aws s3api head-bucket --bucket support-bot-terraform-state 2>&1 || true)
-        if [[ -n "$BUCKET_EXISTS" ]]; then
+        # Check if bucket exists - will return exit code 0 if bucket exists and you have access
+        if aws s3api head-bucket --bucket support-bot-terraform-state 2>/dev/null; then
+          echo "S3 bucket already exists."
+        else
           echo "Creating S3 bucket for Terraform state..."
           aws s3api create-bucket \
             --bucket support-bot-terraform-state \
@@ -62,12 +64,11 @@ jobs:
           aws s3api put-bucket-encryption \
             --bucket support-bot-terraform-state \
             --server-side-encryption-configuration '{"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]}'
-        else
-          echo "S3 bucket already exists."
         fi
     
     - name: Create DynamoDB table for Terraform locks
       run: |
+        # Check if table exists - returns "ResourceNotFoundException" if it doesn't exist
         TABLE_EXISTS=$(aws dynamodb describe-table --table-name support-bot-terraform-locks 2>&1 || true)
         if [[ "$TABLE_EXISTS" == *"ResourceNotFoundException"* ]]; then
           echo "Creating DynamoDB table for Terraform locks..."
