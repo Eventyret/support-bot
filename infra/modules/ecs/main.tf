@@ -54,7 +54,7 @@ resource "aws_ecs_task_definition" "backend" {
 
       secrets = [
         {
-          name      = "MONGODB_URI"
+          name      = "DATABASE_URL"
           valueFrom = "${var.secrets_arn}:MONGODB_URI::"
         },
         {
