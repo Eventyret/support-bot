@@ -4,9 +4,8 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Use the direct absolute path to the .env file in the project root
+dotenv.config({ path: '/Users/eventyret/Development/support-bot/.env' });
 
 import aiRoutes from './routes/aiRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
@@ -15,6 +14,7 @@ import cleanupRoutes from './routes/cleanupRoutes.js';
 import { connectDB } from './lib/mongoose.js';
 import { startAgenda } from './lib/agenda.js';
 import { ensureDbConnection } from './middleware/db.js';
+import { setupSwagger } from './config/swagger.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,6 +27,9 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/cleanup', cleanupRoutes);
+
+// Setup Swagger documentation
+setupSwagger(app);
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
@@ -43,6 +46,7 @@ const startServer = async () => {
 
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
+            console.log(`Swagger documentation available at http://localhost:${PORT}/api-docs`);
         });
 
         await startAgenda();
