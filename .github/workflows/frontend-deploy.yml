@@ -51,6 +51,8 @@ jobs:
       run: |
         npm ci
         npm run build
+      env:
+        VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
       
     - name: Deploy to S3
       working-directory: ./frontend
