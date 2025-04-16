@@ -6,7 +6,10 @@ import ms from 'ms';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+// Only load .env file in development environments
+if (process.env.NODE_ENV !== 'production') {
+    dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+}
 
 const defaultCleanupAge = '30d';
 

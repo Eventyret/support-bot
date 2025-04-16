@@ -1,0 +1,301 @@
+{
+  "name": "Escalation Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Evaluate whether escalation is required for the following user session.\n\nSession ID: {{ $json.sessionID }}\n\nConversation:\n{{ $json.messageText }}",
+        "options": {
+          "systemMessage": "=You are an AI escalation agent responsible for evaluating customer support sessions.\n\nYour task is to:\n1. Carefully analyze the conversation history between the user and the assistant.\n2. Extract the user's email address and invoice ID (formatted like COG-XXXXXX) from the conversation.\n3. Determine whether the issue was successfully resolved.\n4. Decide whether escalation to a human support agent is required.\n5. If escalation is required, compose a professional and informative email **subject** and **body** in **HTML format** that provides:\n   - A clear summary of the situation based on the messages.\n   - Why escalation is necessary.\n   - What the support agent should know or do next.\n\nYou will be given the following inputs:\n- `sessionID`: the identifier for the conversation.\n- `messageText`: the full conversation history with roles indicated.\n\n---\n\n### Output Format\nIf escalation is **not needed**, return:\n```json\n{\n  \"escalate\": false\n}\n```\n\nIf escalation **is needed**, return:\n```json\n{\n  \"escalate\": true,\n  \"subject\": \"AI-generated subject that clearly summarizes the issue\",\n  \"body\": \"<p>...</p>\" // full HTML body\n}\n```\n\nThe **subject** must:\n- Be fully written by the AI.\n- Include the nature of the issue (e.g., \"Billing Issue\", \"Login Failure\").\n- Include the extracted invoice ID if available.\n- Be clear and useful for a support team triaging inboxes.\n\nThe **body** must be:\n- A valid HTML string.\n- Written in a clear, structured tone.\n- Suitable for rendering in an email client.\n- Include:\n  <ul>\n    <li><strong>Summary of the issue</strong></li>\n    <li><strong>Key actions taken</strong></li>\n    <li><strong>What is still unresolved</strong></li>\n    <li><strong>Relevant user details</strong> (user email and invoice ID extracted from the conversation)</li>\n  </ul>\n- Use paragraphs and optionally bold key facts for readability.\n\nDo not return markdown. Do not include code fences (```json). Only return a single valid JSON object.\nDo not send the email. Your only job is to decide and generate the appropriate response.\n\n---\n\nFirst, identify and extract the user's email and invoice ID from the conversation before making your escalation decision."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        260,
+        -40
+      ],
+      "id": "a14485d5-62d0-4367-853e-53cfcc07e789",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash-001",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        140,
+        220
+      ],
+      "id": "5ab5a1ff-9abe-4f83-9fd1-88d2b55814f2",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "mHIXNSb0KRfX4XCf",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.sessionID }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        220
+      ],
+      "id": "75f2bd19-aaa4-403c-8298-e6d52965d7ff",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "operation": "aggregate",
+        "collection": "sessions",
+        "query": "=[\n  {\n    \"$match\": {\n      \"sessionID\": \"{{ $json.sessionID }}\"\n    }\n  },\n  {\n    \"$lookup\": {\n      \"from\": \"messages\",\n      \"localField\": \"sessionID\",\n      \"foreignField\": \"sessionId\",\n      \"as\": \"messages\"\n    }\n  }\n]\n"
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        -140,
+        -40
+      ],
+      "id": "c9bff461-f776-4e0c-8d9b-d5f4bfa4cd0c",
+      "name": "Get Messages",
+      "credentials": {
+        "mongoDb": {
+          "id": "okxeZpOs8l4zYIL4",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const session = $json;\n\n// Format messages for AI processing\nconst messageText = session.messages.map(m => {\n  return `${m.role.toUpperCase()}: ${m.content}`;\n}).join('\\n\\n');\n\nreturn [\n  {\n    json: {\n      sessionID: session.sessionID,\n      messageText\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        -40
+      ],
+      "id": "0338ac2a-5d8a-40c5-bf29-cb758a8e7b78",
+      "name": "User Story"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9fb20983-09a1-4c74-88d2-501adf3ff5ce",
+              "leftValue": "={{ $json.escalate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        840,
+        -40
+      ],
+      "id": "2c23539a-000d-4860-a5d5-f5beb3e2dfc5",
+      "name": "Escalation needed"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "sessionID"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -360,
+        -40
+      ],
+      "id": "0dec23f3-c204-4da5-b7ac-c8c2593ee649",
+      "name": "Escalation Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output;\n\n// Remove any ```json or ``` (with or without line breaks)\nconst cleaned = raw.replace(/```json|```/g, '').trim();\n\nreturn [\n  {\n    json: JSON.parse(cleaned)\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        -40
+      ],
+      "id": "71085545-b7d6-4c22-9efa-b86b34aaf5e5",
+      "name": "Code"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        60
+      ],
+      "id": "4ec464eb-8109-459b-91b5-1a1f891f3604",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "sendTo": "simen.dehlin@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1040,
+        -220
+      ],
+      "id": "a27a572e-9ed0-4424-a7c6-984c042d228a",
+      "name": "Escalate To Team",
+      "webhookId": "b7ed2f0f-9d86-4ed0-aec1-7a157ecf4bb7",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "L7r8bsNbSPWhgpKO",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Messages": {
+      "main": [
+        [
+          {
+            "node": "User Story",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "User Story": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalation Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Escalation needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalation needed": {
+      "main": [
+        [
+          {
+            "node": "Escalate To Team",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e3632cc4-47f8-4766-801b-aea514ceb49e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9863b5f57343a90efe466769ef5a44814a14da36e8f91b99ef2e5717f14cd3b2"
+  },
+  "id": "bcYVRRSIcEr3vFzX",
+  "tags": []
+}

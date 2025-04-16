@@ -1,0 +1,102 @@
+{
+  "name": "Chat History Lookup",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "sessionID"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "995980f3-1644-4da4-993c-cd44b7fd60ec",
+      "name": "Chat History Lookup"
+    },
+    {
+      "parameters": {
+        "operation": "aggregate",
+        "collection": "sessions",
+        "query": "=[\n  {\n    \"$match\": {\n      \"sessionID\": \"{{$json.sessionID}}\"\n    }\n  },\n  {\n    \"$lookup\": {\n      \"from\": \"messages\",\n      \"localField\": \"sessionID\",\n      \"foreignField\": \"sessionId\",\n      \"as\": \"messages\"\n    }\n  }\n]"
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        220,
+        0
+      ],
+      "id": "3c1dd21e-74a4-436f-a923-080b569eaa04",
+      "name": "MongoDB",
+      "credentials": {
+        "mongoDb": {
+          "id": "okxeZpOs8l4zYIL4",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the session with messages\nconst session = $input.first().json;\nconst messages = session.messages || [];\n\n// Extract some basic stats that might be useful\nconst userEmail = messages.reduce((email, msg) => {\n  if (email) return email; // Already found\n  if (msg.role !== 'user') return email;\n  \n  const matches = msg.content.match(/\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b/g);\n  return matches ? matches[0] : email;\n}, '');\n\nreturn {\n  sessionID: session.sessionID,\n  messages: messages,\n  messageCount: messages.length,\n  firstMessageTime: messages.length > 0 ? messages[0].createdAt : null,\n  lastMessageTime: messages.length > 0 ? messages[messages.length - 1].createdAt : null,\n  extractedUserEmail: userEmail\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "id": "383c86dc-2927-4879-934d-c49751f2774b",
+      "name": "Code"
+    }
+  ],
+  "pinData": {
+    "Chat History Lookup": [
+      {
+        "json": {
+          "sessionID": "c2a9506e9a125d1de0d282735f9dd064"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Chat History Lookup": {
+      "main": [
+        [
+          {
+            "node": "MongoDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MongoDB": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f4269147-1f14-40de-96d6-76142488ff44",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9863b5f57343a90efe466769ef5a44814a14da36e8f91b99ef2e5717f14cd3b2"
+  },
+  "id": "EV5EqlN4pOhKjubg",
+  "tags": []
+}
