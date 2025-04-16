@@ -4,7 +4,10 @@ import express from 'express';
 import aiRoutes from './routes/aiRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
 import sessionRoutes from './routes/sessionRoutes.js';
+import cleanupRoutes from './routes/cleanupRoutes.js';
 import { connectDB } from './lib/mongoose.js';
+import { startAgenda } from './lib/agenda.js';
+import { config } from './config/env.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -26,6 +29,7 @@ app.use(express.json());
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/cleanup', cleanupRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -48,6 +52,10 @@ const startServer = async () => {
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
         });
+
+        // Start Agenda scheduler
+        await startAgenda();
+        console.log('Agenda scheduler started');
     } catch (error) {
         console.error('Failed to start server:', error);
         process.exit(1);
