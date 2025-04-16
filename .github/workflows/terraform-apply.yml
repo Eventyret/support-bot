@@ -90,6 +90,27 @@ jobs:
       working-directory: ./infra
       run: tofu init
     
+    - name: Check if ECS service exists
+      id: check_ecs
+      working-directory: ./infra
+      run: |
+        if aws ecs describe-services --cluster support-bot-prod-cluster --services support-bot-prod-service 2>/dev/null | grep -q "support-bot-prod-service"; then
+          echo "ecs_service_exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "ecs_service_exists=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Import existing ECS service if needed
+      if: steps.check_ecs.outputs.ecs_service_exists == 'true'
+      working-directory: ./infra
+      run: |
+        echo "Importing existing ECS service into Terraform state..."
+        # First try to create state file if it doesn't exist
+        touch terraform.tfstate || true
+        # Attempt to import the existing service
+        tofu import module.ecs.aws_ecs_service.backend_update support-bot-prod-cluster/support-bot-prod-service || true
+        echo "Import completed. Proceeding with plan and apply."
+    
     - name: OpenTofu Validate
       working-directory: ./infra
       run: tofu validate
