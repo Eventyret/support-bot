@@ -1,0 +1,56 @@
+name: Main Deployment Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+          - dev
+
+permissions:
+  contents: read
+  id-token: write
+  actions: write
+
+jobs:
+  # First run the infrastructure deployment
+  infrastructure:
+    name: Deploy Infrastructure
+    uses: ./.github/workflows/terraform-apply.yml
+    secrets: inherit
+    with:
+      environment: ${{ github.event.inputs.environment || 'prod' }}
+  
+  # Then deploy the backend
+  backend:
+    name: Deploy Backend
+    needs: infrastructure
+    uses: ./.github/workflows/backend-deploy.yml
+    secrets: inherit
+  
+  # Finally deploy the frontend
+  frontend:
+    name: Deploy Frontend
+    needs: backend
+    uses: ./.github/workflows/frontend-deploy.yml
+    secrets: inherit
+  
+  # Final summary job
+  summary:
+    name: Deployment Summary
+    needs: [infrastructure, backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deployment Summary
+        run: |
+          echo "✅ Infrastructure deployment completed"
+          echo "✅ Backend deployment completed"
+          echo "✅ Frontend deployment completed"
+          echo "🎉 Full deployment pipeline complete!" 

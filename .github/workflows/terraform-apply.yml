@@ -11,6 +11,13 @@ on:
         options:
           - prod
           - dev
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'prod'
+        type: string
 
 env:
   TF_VERSION: '1.7.0'
@@ -24,6 +31,8 @@ jobs:
   terraform:
     name: 'OpenTofu'
     runs-on: ubuntu-latest
+    outputs:
+      infrastructure_ready: ${{ steps.set_output.outputs.ready }}
     
     steps:
     - name: Checkout
@@ -88,12 +97,16 @@ jobs:
       working-directory: ./infra
       env:
         TF_VAR_mongodb_uri: ${{ secrets.TF_VAR_mongodb_uri }}
-        TF_VAR_environment: ${{ github.event.inputs.environment }}
+        TF_VAR_environment: ${{ inputs.environment || github.event.inputs.environment }}
       run: tofu plan -input=false
     
     - name: OpenTofu Apply
       working-directory: ./infra
       env:
         TF_VAR_mongodb_uri: ${{ secrets.TF_VAR_mongodb_uri }}
-        TF_VAR_environment: ${{ github.event.inputs.environment }}
-      run: tofu apply -auto-approve -input=false 
+        TF_VAR_environment: ${{ inputs.environment || github.event.inputs.environment }}
+      run: tofu apply -auto-approve -input=false
+      
+    - name: Set Output
+      id: set_output
+      run: echo "ready=true" >> $GITHUB_OUTPUT 

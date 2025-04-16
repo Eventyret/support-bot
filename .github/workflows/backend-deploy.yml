@@ -7,6 +7,11 @@ on:
       - 'backend/**'
       - '.github/workflows/backend-deploy.yml'
   workflow_dispatch:
+  workflow_call:
+    outputs:
+      backend_ready:
+        description: "Indicates if the backend deployment completed successfully"
+        value: ${{ jobs.build-and-deploy.outputs.ready }}
 
 env:
   AWS_REGION: eu-west-2
@@ -23,6 +28,8 @@ jobs:
   build-and-deploy:
     name: Build and Deploy
     runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.set_output.outputs.ready }}
     
     steps:
     - name: Checkout
@@ -71,4 +78,8 @@ jobs:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
         service: ${{ env.ECS_SERVICE }}
         cluster: ${{ env.ECS_CLUSTER }}
-        wait-for-service-stability: true 
+        wait-for-service-stability: true
+        
+    - name: Set Output
+      id: set_output
+      run: echo "ready=true" >> $GITHUB_OUTPUT 

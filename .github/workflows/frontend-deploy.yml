@@ -7,6 +7,11 @@ on:
       - 'frontend/**'
       - '.github/workflows/frontend-deploy.yml'
   workflow_dispatch:
+  workflow_call:
+    outputs:
+      frontend_ready:
+        description: "Indicates if the frontend deployment completed successfully"
+        value: ${{ jobs.build-and-deploy.outputs.ready }}
 
 env:
   AWS_REGION: eu-west-2
@@ -20,6 +25,8 @@ jobs:
   build-and-deploy:
     name: Build and Deploy
     runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.set_output.outputs.ready }}
     
     steps:
     - name: Checkout
@@ -56,4 +63,8 @@ jobs:
           aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
         else
           echo "No CloudFront distribution ID provided. Skipping cache invalidation."
-        fi 
+        fi
+        
+    - name: Set Output
+      id: set_output
+      run: echo "ready=true" >> $GITHUB_OUTPUT 
