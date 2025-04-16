@@ -11,6 +11,11 @@ on:
         options:
           - prod
           - dev
+      skip_import:
+        description: 'Skip ECS service import (use if import hangs)'
+        required: false
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       environment:
@@ -18,6 +23,11 @@ on:
         required: true
         default: 'prod'
         type: string
+      skip_import:
+        description: 'Skip ECS service import (use if import hangs)'
+        required: false
+        default: false
+        type: boolean
 
 env:
   TF_VERSION: '1.7.0'
@@ -94,22 +104,34 @@ jobs:
       id: check_ecs
       working-directory: ./infra
       run: |
+        echo "Checking if ECS service exists..."
         if aws ecs describe-services --cluster support-bot-prod-cluster --services support-bot-prod-service 2>/dev/null | grep -q "support-bot-prod-service"; then
+          echo "ECS service 'support-bot-prod-service' exists in cluster 'support-bot-prod-cluster'"
           echo "ecs_service_exists=true" >> $GITHUB_OUTPUT
         else
+          echo "ECS service not found"
           echo "ecs_service_exists=false" >> $GITHUB_OUTPUT
         fi
     
     - name: Import existing ECS service if needed
-      if: steps.check_ecs.outputs.ecs_service_exists == 'true'
+      if: steps.check_ecs.outputs.ecs_service_exists == 'true' && inputs.skip_import != true && github.event.inputs.skip_import != 'true'
+      id: import_ecs
       working-directory: ./infra
+      timeout-minutes: 2
       run: |
         echo "Importing existing ECS service into Terraform state..."
+        echo "Using command: tofu import module.ecs.aws_ecs_service.backend_update support-bot-prod-cluster/support-bot-prod-service"
+        
         # First try to create state file if it doesn't exist
         touch terraform.tfstate || true
-        # Attempt to import the existing service
-        tofu import module.ecs.aws_ecs_service.backend_update support-bot-prod-cluster/support-bot-prod-service || true
-        echo "Import completed. Proceeding with plan and apply."
+        
+        # Run import with increased verbosity and a timeout
+        if timeout 90s tofu import -input=false module.ecs.aws_ecs_service.backend_update support-bot-prod-cluster/support-bot-prod-service; then
+          echo "Import completed successfully"
+        else
+          echo "Import timed out or failed. This is not fatal - will continue with apply."
+          echo "If issues persist, rerun workflow with 'skip_import' option enabled."
+        fi
     
     - name: OpenTofu Validate
       working-directory: ./infra
