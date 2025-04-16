@@ -1,4 +1,5 @@
 import * as React from "react";
+import PropTypes from 'prop-types';
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,16 @@ const ChatInput = React.forwardRef(
         />
     ),
 );
+
+ChatInput.propTypes = {
+    className: PropTypes.string,
+    value: PropTypes.string,
+    onChange: PropTypes.func,
+    placeholder: PropTypes.string,
+    disabled: PropTypes.bool,
+    required: PropTypes.bool,
+};
+
 ChatInput.displayName = "ChatInput";
 
 export { ChatInput };

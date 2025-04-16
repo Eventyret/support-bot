@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { X, MessageCircle } from "lucide-react";
+import PropTypes from 'prop-types';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -74,6 +75,14 @@ const ExpandableChat = ({
   );
 };
 
+ExpandableChat.propTypes = {
+  className: PropTypes.string,
+  position: PropTypes.oneOf(['bottom-right', 'bottom-left']),
+  size: PropTypes.oneOf(['sm', 'md', 'lg', 'xl', 'full']),
+  icon: PropTypes.node,
+  children: PropTypes.node,
+};
+
 ExpandableChat.displayName = "ExpandableChat";
 
 const ExpandableChatHeader = ({
@@ -86,6 +95,11 @@ const ExpandableChatHeader = ({
   />
 );
 
+ExpandableChatHeader.propTypes = {
+  className: PropTypes.string,
+  children: PropTypes.node,
+};
+
 ExpandableChatHeader.displayName = "ExpandableChatHeader";
 
 const ExpandableChatBody = ({
@@ -93,12 +107,22 @@ const ExpandableChatBody = ({
   ...props
 }) => <div className={cn("flex-grow overflow-y-auto", className)} {...props} />;
 
+ExpandableChatBody.propTypes = {
+  className: PropTypes.string,
+  children: PropTypes.node,
+};
+
 ExpandableChatBody.displayName = "ExpandableChatBody";
 
 const ExpandableChatFooter = ({
   className,
   ...props
 }) => <div className={cn("border-t p-4", className)} {...props} />;
+
+ExpandableChatFooter.propTypes = {
+  className: PropTypes.string,
+  children: PropTypes.node,
+};
 
 ExpandableChatFooter.displayName = "ExpandableChatFooter";
 
@@ -125,6 +149,13 @@ const ExpandableChatToggle = ({
     )}
   </Button>
 );
+
+ExpandableChatToggle.propTypes = {
+  className: PropTypes.string,
+  icon: PropTypes.node,
+  isOpen: PropTypes.bool.isRequired,
+  toggleChat: PropTypes.func.isRequired,
+};
 
 ExpandableChatToggle.displayName = "ExpandableChatToggle";
 

@@ -3,6 +3,7 @@
 import * as React from "react"
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
 import { CheckIcon } from "lucide-react"
+import PropTypes from 'prop-types'
 
 import { cn } from "@/lib/utils"
 
@@ -27,6 +28,17 @@ function Checkbox({
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   )
+}
+
+Checkbox.propTypes = {
+  className: PropTypes.string,
+  checked: PropTypes.bool,
+  defaultChecked: PropTypes.bool,
+  onCheckedChange: PropTypes.func,
+  disabled: PropTypes.bool,
+  required: PropTypes.bool,
+  name: PropTypes.string,
+  id: PropTypes.string,
 }
 
 export { Checkbox }

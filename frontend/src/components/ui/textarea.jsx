@@ -1,4 +1,5 @@
 import * as React from "react"
+import PropTypes from 'prop-types'
 
 import { cn } from "@/lib/utils"
 
@@ -13,6 +14,19 @@ function Textarea({ className, ...props }) {
       {...props}
     />
   )
+}
+
+Textarea.propTypes = {
+  className: PropTypes.string,
+  value: PropTypes.string,
+  onChange: PropTypes.func,
+  placeholder: PropTypes.string,
+  disabled: PropTypes.bool,
+  required: PropTypes.bool,
+  name: PropTypes.string,
+  id: PropTypes.string,
+  rows: PropTypes.number,
+  cols: PropTypes.number,
 }
 
 export { Textarea }

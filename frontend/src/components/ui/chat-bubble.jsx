@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import PropTypes from 'prop-types'
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -8,7 +9,6 @@ import { MessageLoading } from "@/components/ui/message-loading";
 
 export function ChatBubble({
     variant = "received",
-    layout = "default",
     className,
     children,
 }) {
@@ -24,6 +24,13 @@ export function ChatBubble({
         </div>
     )
 }
+
+ChatBubble.propTypes = {
+    variant: PropTypes.oneOf(['received', 'sent']),
+    className: PropTypes.string,
+    children: PropTypes.node,
+}
+
 export function ChatBubbleMessage({
     variant = "received",
     isLoading,
@@ -49,6 +56,12 @@ export function ChatBubbleMessage({
     )
 }
 
+ChatBubbleMessage.propTypes = {
+    variant: PropTypes.oneOf(['received', 'sent']),
+    isLoading: PropTypes.bool,
+    className: PropTypes.string,
+    children: PropTypes.node,
+}
 
 export function ChatBubbleAvatar({
     src,
@@ -63,7 +76,11 @@ export function ChatBubbleAvatar({
     )
 }
 
-
+ChatBubbleAvatar.propTypes = {
+    src: PropTypes.string,
+    fallback: PropTypes.string,
+    className: PropTypes.string,
+}
 
 export function ChatBubbleAction({
     icon,
@@ -82,6 +99,12 @@ export function ChatBubbleAction({
     )
 }
 
+ChatBubbleAction.propTypes = {
+    icon: PropTypes.node,
+    onClick: PropTypes.func,
+    className: PropTypes.string,
+}
+
 export function ChatBubbleActionWrapper({
     className,
     children,
@@ -91,4 +114,9 @@ export function ChatBubbleActionWrapper({
             {children}
         </div>
     )
+}
+
+ChatBubbleActionWrapper.propTypes = {
+    className: PropTypes.string,
+    children: PropTypes.node,
 }
