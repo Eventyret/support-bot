@@ -98,6 +98,17 @@ resource "aws_ecs_service" "backend" {
   launch_type                        = "FARGATE"
   scheduling_strategy                = "REPLICA"
 
+  # Add deployment circuit breaker to fail deployments when tasks can't start
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  # Set deployment controller for rolling updates
+  deployment_controller {
+    type = "ECS"
+  }
+
   network_configuration {
     security_groups  = [aws_security_group.ecs_service.id]
     subnets          = var.private_subnets
@@ -203,11 +214,11 @@ resource "aws_lb_target_group" "backend" {
 
   health_check {
     enabled             = true
-    interval            = 30
+    interval            = 15
     path                = "/health"
     port                = "traffic-port"
-    healthy_threshold   = 3
-    unhealthy_threshold = 3
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
     timeout             = 5
     protocol            = "HTTP"
     matcher             = "200"

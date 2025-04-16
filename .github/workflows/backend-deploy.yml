@@ -79,6 +79,25 @@ jobs:
         service: ${{ env.ECS_SERVICE }}
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
+        timeout-minutes: 5
+        codedeploy-deployment-group: deployment-group-name
+        codedeploy-appspec: |
+          version: 0.0
+          Resources:
+            - TargetService:
+                Type: AWS::ECS::Service
+                Properties:
+                  TaskDefinition: <TASK_DEFINITION>
+                  LoadBalancerInfo:
+                    ContainerName: "support-bot-prod-backend"
+                    ContainerPort: 3000
+                  PlatformVersion: "LATEST"
+                DeploymentConfiguration:
+                  MaximumPercent: 200
+                  MinimumHealthyPercent: 100
+                  DeploymentCircuitBreaker:
+                    Enable: true
+                    Rollback: true
         
     - name: Set Output
       id: set_output

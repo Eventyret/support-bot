@@ -24,5 +24,5 @@ ENV PORT=3000
 # Expose port
 EXPOSE 3000
 
-# Start the application
-CMD ["node", "server.js"] 
+# Start the application with correct path to server.js
+CMD ["node", "src/server.js"] 
