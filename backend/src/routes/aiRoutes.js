@@ -24,26 +24,20 @@ router.post('/chat', async (req, res) => {
 
         // If session doesn't exist, create it
         if (!session) {
-            console.log(`Session ${sessionId} not found, creating new session`);
+            console.log(`🆕 Session ${sessionId} not found, creating new session`);
             session = await Session.create({
-                _id: sessionId
+                _id: sessionId,
+                sessionID: sessionId
             });
         } else {
-            console.log(`Using existing session: ${sessionId}`);
+            console.log(`🔄 Using existing session: ${sessionId}`);
         }
-
-        // Log incoming chat request
-        console.log('\n=== INCOMING CHAT REQUEST ===');
-        console.log(`Session ID: ${sessionId}`);
-        console.log(`Timestamp: ${new Date().toISOString()}`);
-        console.log('Messages:');
-        messages.forEach((msg, index) => {
-            console.log(`  [${index + 1}] ${msg.role.toUpperCase()}: ${msg.content}`);
-        });
-        console.log('=============================\n');
 
         // Get the latest user message
         const latestMessage = messages[messages.length - 1];
+
+        // Simplified logging with emojis
+        console.log(`\n💬 [${sessionId}] User: ${latestMessage.content}`);
 
         // Check if this message already exists in the database to prevent duplicates
         const existingMessage = await Message.findOne({
@@ -63,8 +57,9 @@ router.post('/chat', async (req, res) => {
                 role: latestMessage.role,
                 sessionId: sessionId
             });
+            console.log(`💾 Stored user message in MongoDB`);
         } else {
-            console.log('Message already exists, skipping creation');
+            console.log(`⚠️ Message already exists, skipping creation`);
         }
 
         // Format the request body for n8n
@@ -80,10 +75,8 @@ router.post('/chat', async (req, res) => {
             }))
         };
 
-        console.log('Sending to n8n:', JSON.stringify(requestBody, null, 2));
-
         const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
-        console.log(`Forwarding request to n8n webhook: ${n8nWebhookUrl}`);
+        console.log(`📤 Sending to n8n webhook`);
 
         // Send request to n8n
         const response = await fetch(n8nWebhookUrl, {
@@ -101,11 +94,9 @@ router.post('/chat', async (req, res) => {
         if (contentType && contentType.includes('application/json')) {
             // Parse JSON response
             responseData = await response.json();
-            console.log('Received from n8n:', JSON.stringify(responseData, null, 2));
         } else {
             // Handle plain text response
             const textResponse = await response.text();
-            console.log('Received from n8n (text):', textResponse);
             responseData = { output: textResponse };
         }
 
@@ -114,7 +105,7 @@ router.post('/chat', async (req, res) => {
             // If n8n returned an error, try to extract the error message
             const errorMessage = responseData.message || responseData.error || 'Unknown error from n8n';
             const errorHint = responseData.hint || '';
-            console.error(`n8n error: ${errorMessage}`);
+            console.error(`❌ n8n error: ${errorMessage}`);
 
             // Store the error message in MongoDB
             await Message.create({
@@ -152,12 +143,9 @@ router.post('/chat', async (req, res) => {
             sessionId: sessionId
         });
 
-        // Log the complete response
-        console.log('\n=== AI RESPONSE ===');
-        console.log(`Session ID: ${sessionId}`);
-        console.log(`Timestamp: ${new Date().toISOString()}`);
-        console.log(`Response: ${n8nResponse}`);
-        console.log('==================\n');
+        // Simplified logging with emojis
+        console.log(`🤖 [${sessionId}] Assistant: ${n8nResponse.substring(0, 100)}${n8nResponse.length > 100 ? '...' : ''}`);
+        console.log(`💾 Stored assistant response in MongoDB\n`);
 
         // Format the response for the frontend
         const formattedResponse = {
@@ -170,12 +158,8 @@ router.post('/chat', async (req, res) => {
         // Return the formatted response
         res.json(formattedResponse);
     } catch (error) {
-        console.error('Error in AI chat:', error);
-        console.error('Error details:', {
-            message: error.message,
-            stack: error.stack,
-            timestamp: new Date().toISOString()
-        });
+        console.error(`❌ Error in AI chat: ${error.message}`);
+        console.error(`🔍 Stack: ${error.stack.substring(0, 200)}...`);
 
         // Return a regular JSON error response
         res.status(500).json({
@@ -225,7 +209,7 @@ router.get('/chat/:sessionId', async (req, res) => {
             updatedAt: session.updatedAt
         });
     } catch (error) {
-        console.error('Error fetching chat history:', error);
+        console.error(`❌ Error fetching chat history: ${error.message}`);
         res.status(500).json({ error: 'Failed to fetch chat history' });
     }
 });

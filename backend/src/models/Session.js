@@ -5,6 +5,11 @@ const sessionSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    sessionID: {
+        type: String,
+        required: true,
+        unique: true
+    },
     createdAt: {
         type: Date,
         default: Date.now
@@ -16,6 +21,8 @@ const sessionSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
+
+
 
 // Create the model if it doesn't exist, otherwise use the existing one
 const Session = mongoose.models.Session || mongoose.model('Session', sessionSchema);

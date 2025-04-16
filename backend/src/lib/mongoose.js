@@ -29,12 +29,7 @@ export const connectDB = async () => {
         }
 
         console.log('Creating new mongoose connection');
-        const connection = await mongoose.connect(MONGODB_URI, {
-            // These options are no longer needed in newer versions of Mongoose
-            // but included for compatibility
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
+        const connection = await mongoose.connect(MONGODB_URI);
 
         // Store the connection in the global object
         globalForMongoose.mongoose = connection;

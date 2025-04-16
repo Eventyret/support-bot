@@ -13,7 +13,7 @@ import {
     ExpandableChatFooter,
     ExpandableChatHeader,
 } from "@/components/ui/expandable-chat"
-import { Bot, CornerDownLeft, Mic, Paperclip } from "lucide-react"
+import { Bot, CornerDownLeft, Mic, Paperclip, Trash2 } from "lucide-react"
 
 export default function Chat() {
     const [sessionId, setSessionId] = useState(null)
@@ -28,69 +28,88 @@ export default function Chat() {
     const apiURL = `${import.meta.env.VITE_BACKEND_URL}/api/ai/chat`
     const sessionApiURL = `${import.meta.env.VITE_BACKEND_URL}/api/sessions`
 
+    // Function to clear the current session
+    const clearSession = () => {
+        // Clear from sessionStorage
+        sessionStorage.removeItem('chatSessionId');
+        // Also clear from localStorage for backward compatibility
+        localStorage.removeItem('chatSessionId');
+
+        // Reset state
+        setSessionId(null);
+        setMessages([]);
+        setInput("");
+
+        // Create a new session
+        initializeSession();
+    };
+
+    // Initialize session when the component mounts
+    const initializeSession = async () => {
+        try {
+            setIsInitializing(true);
+
+            // Check if we already have a session ID in sessionStorage
+            const storedSessionId = sessionStorage.getItem('chatSessionId');
+
+            if (storedSessionId) {
+                // Verify the session exists on the backend
+                try {
+                    const response = await fetch(`${sessionApiURL}/${storedSessionId}`);
+                    if (response.ok) {
+                        // Session exists, use it
+                        setSessionId(storedSessionId);
+                        console.log('Using existing session:', storedSessionId);
+
+                        // Load existing messages
+                        const sessionData = await response.json();
+                        if (sessionData.messages && sessionData.messages.length > 0) {
+                            setMessages(sessionData.messages);
+                        }
+
+                        setError(null);
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error verifying session:', error);
+                    // Continue to create a new session if verification fails
+                }
+            }
+
+            // Create a new session if we don't have one or the existing one is invalid
+            const response = await fetch(sessionApiURL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to create session');
+            }
+
+            const data = await response.json();
+            const newSessionId = data.sessionID || data._id || data.id;
+
+            // Store the session ID in sessionStorage
+            sessionStorage.setItem('chatSessionId', newSessionId);
+            // Also store in localStorage for backward compatibility
+            localStorage.setItem('chatSessionId', newSessionId);
+
+            setSessionId(newSessionId);
+            console.log('New session created:', newSessionId);
+            setError(null);
+        } catch (error) {
+            console.error('Error initializing session:', error);
+            // Don't show technical errors to the user
+            setError('We\'re having trouble connecting to the chat service. Please try again later.');
+        } finally {
+            setIsInitializing(false);
+        }
+    };
+
     // Initialize session when the component mounts
     useEffect(() => {
-        const initializeSession = async () => {
-            try {
-                setIsInitializing(true);
-
-                // Check if we already have a session ID in localStorage
-                const storedSessionId = localStorage.getItem('chatSessionId');
-
-                if (storedSessionId) {
-                    // Verify the session exists on the backend
-                    try {
-                        const response = await fetch(`${sessionApiURL}/${storedSessionId}`);
-                        if (response.ok) {
-                            // Session exists, use it
-                            setSessionId(storedSessionId);
-                            console.log('Using existing session:', storedSessionId);
-
-                            // Load existing messages
-                            const sessionData = await response.json();
-                            if (sessionData.messages && sessionData.messages.length > 0) {
-                                setMessages(sessionData.messages);
-                            }
-
-                            setError(null);
-                            return;
-                        }
-                    } catch (error) {
-                        console.error('Error verifying session:', error);
-                        // Continue to create a new session if verification fails
-                    }
-                }
-
-                // Create a new session if we don't have one or the existing one is invalid
-                const response = await fetch(sessionApiURL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to create session');
-                }
-
-                const data = await response.json();
-                const newSessionId = data._id || data.id;
-
-                // Store the session ID in localStorage
-                localStorage.setItem('chatSessionId', newSessionId);
-
-                setSessionId(newSessionId);
-                console.log('New session created:', newSessionId);
-                setError(null);
-            } catch (error) {
-                console.error('Error initializing session:', error);
-                // Don't show technical errors to the user
-                setError('We\'re having trouble connecting to the chat service. Please try again later.');
-            } finally {
-                setIsInitializing(false);
-            }
-        };
-
         initializeSession();
     }, []);
 
@@ -222,6 +241,15 @@ export default function Chat() {
                     <p className="text-sm text-muted-foreground">
                         Ask me anything about the components
                     </p>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mt-2 text-xs text-muted-foreground hover:text-destructive"
+                        onClick={clearSession}
+                    >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Clear Session
+                    </Button>
                 </ExpandableChatHeader>
 
                 <ExpandableChatBody>

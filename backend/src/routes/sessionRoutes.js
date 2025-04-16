@@ -26,7 +26,8 @@ router.post('/', async (req, res) => {
 
         // Create a new session
         const session = await Session.create({
-            _id: sessionId
+            _id: sessionId,
+            sessionID: sessionId
         });
 
         console.log(`Session created successfully: ${sessionId}`);
