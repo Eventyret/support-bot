@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as sessionRoutes from '../../../src/routes/sessionRoutes.js';
+import * as sessionController from '../../../src/controllers/sessionController.js';
 import { connectDB } from '../../../src/lib/mongoose.js';
 import Session from '../../../src/models/Session.js';
 import Message from '../../../src/models/Message.js';
@@ -29,7 +29,7 @@ vi.mock('../../../src/models/Session.js', () => ({
     }
 }));
 
-describe('Session Route Handlers', () => {
+describe('Session Controller', () => {
     let mockReq;
     let mockRes;
     let originalConsoleLog;
@@ -77,7 +77,7 @@ describe('Session Route Handlers', () => {
 
             Session.find.mockResolvedValueOnce(mockSessions);
 
-            await sessionRoutes.handlers.getAllSessions(mockReq, mockRes);
+            await sessionController.getAllSessions(mockReq, mockRes);
 
             expect(connectDB).toHaveBeenCalled();
             expect(Session.find).toHaveBeenCalled();
@@ -89,7 +89,7 @@ describe('Session Route Handlers', () => {
             const error = new Error('Database error');
             Session.find.mockRejectedValueOnce(error);
 
-            await sessionRoutes.handlers.getAllSessions(mockReq, mockRes);
+            await sessionController.getAllSessions(mockReq, mockRes);
 
             expect(connectDB).toHaveBeenCalled();
             expect(Session.find).toHaveBeenCalled();
@@ -111,7 +111,7 @@ describe('Session Route Handlers', () => {
 
             Session.findById.mockResolvedValueOnce(mockSession);
 
-            await sessionRoutes.handlers.getSessionById(mockReq, mockRes);
+            await sessionController.getSessionById(mockReq, mockRes);
 
             expect(connectDB).toHaveBeenCalled();
             expect(Session.findById).toHaveBeenCalledWith('session1');
@@ -125,7 +125,7 @@ describe('Session Route Handlers', () => {
 
             Session.findById.mockResolvedValueOnce(null);
 
-            await sessionRoutes.handlers.getSessionById(mockReq, mockRes);
+            await sessionController.getSessionById(mockReq, mockRes);
 
             expect(connectDB).toHaveBeenCalled();
             expect(Session.findById).toHaveBeenCalledWith('nonexistent');
@@ -140,7 +140,7 @@ describe('Session Route Handlers', () => {
             const error = new Error('Database error');
             Session.findById.mockRejectedValueOnce(error);
 
-            await sessionRoutes.handlers.getSessionById(mockReq, mockRes);
+            await sessionController.getSessionById(mockReq, mockRes);
 
             expect(connectDB).toHaveBeenCalled();
             expect(Session.findById).toHaveBeenCalledWith('session1');
@@ -160,7 +160,7 @@ describe('Session Route Handlers', () => {
             Session.findById.mockResolvedValueOnce(null);
             Session.create.mockResolvedValueOnce(mockSession);
 
-            await sessionRoutes.handlers.createSession(mockReq, mockRes);
+            await sessionController.createSession(mockReq, mockRes);
 
             expect(connectDB).toHaveBeenCalled();
             expect(Session.findById).toHaveBeenCalled();
@@ -178,7 +178,7 @@ describe('Session Route Handlers', () => {
 
             Session.findById.mockResolvedValueOnce(existingSession);
 
-            await sessionRoutes.handlers.createSession(mockReq, mockRes);
+            await sessionController.createSession(mockReq, mockRes);
 
             expect(connectDB).toHaveBeenCalled();
             expect(Session.findById).toHaveBeenCalled();
@@ -191,7 +191,7 @@ describe('Session Route Handlers', () => {
             const error = new Error('Database error');
             Session.findById.mockRejectedValueOnce(error);
 
-            await sessionRoutes.handlers.createSession(mockReq, mockRes);
+            await sessionController.createSession(mockReq, mockRes);
 
             expect(connectDB).toHaveBeenCalled();
             expect(Session.findById).toHaveBeenCalled();
