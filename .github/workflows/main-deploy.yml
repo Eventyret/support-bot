@@ -1,4 +1,4 @@
-name: Main Deployment Pipeline
+name: 🚀 Complete Deployment Pipeline
 
 on:
   push:
