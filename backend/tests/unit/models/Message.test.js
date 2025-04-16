@@ -1,22 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import Message from '../../../src/models/Message.js';
 
-// Mock mongoose
 vi.mock('mongoose', () => ({
     default: {}
 }));
 
-// Mock the Message model
 vi.mock('../../../src/models/Message.js', () => {
-    // Mock model constructor using an inline function
     const MessageModel = function (data) {
         this.data = data || {};
         this.modelName = 'Message';
 
-        // Mock validation method
         this.validateSync = function () {
             const errors = {};
 
-            // Check required fields
             if (!this.data.content) {
                 errors.content = { message: 'Path `content` is required.' };
             }
@@ -42,14 +38,12 @@ vi.mock('../../../src/models/Message.js', () => {
     };
 });
 
-// Import the mocked model
-import Message from '../../../src/models/Message.js';
+
 
 describe('Message Model', () => {
     let messageInstance;
 
     beforeEach(() => {
-        // Create a valid message instance
         messageInstance = {
             content: 'Test message',
             role: 'user',
@@ -60,10 +54,8 @@ describe('Message Model', () => {
     it('should create a valid message', () => {
         const message = new Message(messageInstance);
 
-        // Verify the model was created with the correct name
         expect(message.modelName).toBe('Message');
 
-        // Basic instance should be valid
         expect(message.validateSync()).toBeUndefined();
     });
 });
@@ -78,7 +70,6 @@ describe('Message Schema Validation', () => {
         const message = new Message(invalidMessage);
         const validation = message.validateSync();
 
-        // Content is required
         expect(validation.errors.content.message).toBe('Path `content` is required.');
     });
 
@@ -91,7 +82,6 @@ describe('Message Schema Validation', () => {
         const message = new Message(invalidMessage);
         const validation = message.validateSync();
 
-        // Role is required
         expect(validation.errors.role.message).toBe('Path `role` is required.');
     });
 
@@ -105,7 +95,6 @@ describe('Message Schema Validation', () => {
         const message = new Message(invalidMessage);
         const validation = message.validateSync();
 
-        // Role must be valid
         expect(validation.errors.role.message).toBe('`invalid-role` is not a valid enum value for path `role`.');
     });
 
@@ -118,7 +107,6 @@ describe('Message Schema Validation', () => {
         const message = new Message(invalidMessage);
         const validation = message.validateSync();
 
-        // Session ID is required
         expect(validation.errors.sessionId.message).toBe('Path `sessionId` is required.');
     });
 
@@ -132,7 +120,6 @@ describe('Message Schema Validation', () => {
         const message = new Message(validMessage);
         const validation = message.validateSync();
 
-        // Should be valid
         expect(validation).toBeUndefined();
     });
 }); 

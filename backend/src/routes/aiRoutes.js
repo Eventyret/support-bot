@@ -6,7 +6,6 @@ import { isDuplicateMessage, formatN8nResponse } from '../lib/messageUtils.js';
 
 const router = express.Router();
 
-// AI chat endpoint
 router.post('/chat', async (req, res) => {
     try {
         const { messages, sessionId } = req.body;
@@ -126,7 +125,6 @@ router.post('/chat', async (req, res) => {
     }
 });
 
-// Get chat history for a session
 router.get('/chat/:sessionId', async (req, res) => {
     try {
         const { sessionId } = req.params;

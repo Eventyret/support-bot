@@ -2,32 +2,29 @@ import express from 'express';
 import crypto from 'crypto';
 import Session from '../models/Session.js';
 import Message from '../models/Message.js';
+import { connectDB } from '../lib/mongoose.js';
 
 const router = express.Router();
 
-// Helper function to generate session ID - easier to mock in tests
 export const generateSessionId = () => {
     return crypto.randomBytes(16).toString('hex');
 };
 
-// Handler functions - exported for testing
 export const handlers = {
-    // Create a new session
     createSession: async (req, res) => {
         try {
-            // Generate a random, anonymous session ID
+            await connectDB();
+
             const sessionId = generateSessionId();
 
             console.log(`Creating new session with ID: ${sessionId}`);
 
-            // Check if a session with this ID already exists (unlikely but possible)
             const existingSession = await Session.findById(sessionId);
             if (existingSession) {
                 console.log(`Session with ID ${sessionId} already exists, returning existing session`);
                 return res.json(existingSession);
             }
 
-            // Create a new session
             const session = await Session.create({
                 _id: sessionId,
                 sessionID: sessionId
@@ -41,13 +38,13 @@ export const handlers = {
         }
     },
 
-    // Get a session by ID
     getSessionById: async (req, res) => {
         try {
+            await connectDB();
+
             const sessionId = req.params.id;
             console.log(`Fetching session: ${sessionId}`);
 
-            // Find the session and include all messages
             const session = await Session.findById(sessionId);
 
             if (!session) {
@@ -55,11 +52,9 @@ export const handlers = {
                 return res.status(404).json({ error: 'Session not found' });
             }
 
-            // Find all messages for this session
             const messages = await Message.find({ sessionId: sessionId }).sort({ createdAt: 1 });
             console.log(`Found ${messages.length} messages for session: ${sessionId}`);
 
-            // Combine session and messages
             const sessionWithMessages = {
                 ...session.toObject(),
                 messages
@@ -72,14 +67,13 @@ export const handlers = {
         }
     },
 
-    // Get all sessions
     getAllSessions: async (req, res) => {
         try {
-            // Find all sessions
+            await connectDB();
+
             const sessions = await Session.find();
             console.log(`Found ${sessions.length} total sessions`);
 
-            // For each session, find its messages
             const sessionsWithMessages = await Promise.all(
                 sessions.map(async (session) => {
                     const messages = await Message.find({ sessionId: session._id }).sort({ createdAt: 1 });
@@ -98,7 +92,6 @@ export const handlers = {
     }
 };
 
-// Set up routes
 router.post('/', handlers.createSession);
 router.get('/:id', handlers.getSessionById);
 router.get('/', handlers.getAllSessions);

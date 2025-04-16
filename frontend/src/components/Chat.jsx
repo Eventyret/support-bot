@@ -28,40 +28,29 @@ export default function Chat() {
     const apiURL = `${import.meta.env.VITE_BACKEND_URL}/api/ai/chat`
     const sessionApiURL = `${import.meta.env.VITE_BACKEND_URL}/api/sessions`
 
-    // Function to clear the current session
     const clearSession = () => {
-        // Clear from sessionStorage
         sessionStorage.removeItem('chatSessionId');
-        // Also clear from localStorage for backward compatibility
         localStorage.removeItem('chatSessionId');
 
-        // Reset state
         setSessionId(null);
         setMessages([]);
         setInput("");
 
-        // Create a new session
         initializeSession();
     };
-
-    // Initialize session when the component mounts
     const initializeSession = async () => {
         try {
             setIsInitializing(true);
 
-            // Check if we already have a session ID in sessionStorage
             const storedSessionId = sessionStorage.getItem('chatSessionId');
 
             if (storedSessionId) {
-                // Verify the session exists on the backend
                 try {
                     const response = await fetch(`${sessionApiURL}/${storedSessionId}`);
                     if (response.ok) {
-                        // Session exists, use it
                         setSessionId(storedSessionId);
                         console.log('Using existing session:', storedSessionId);
 
-                        // Load existing messages
                         const sessionData = await response.json();
                         if (sessionData.messages && sessionData.messages.length > 0) {
                             setMessages(sessionData.messages);
@@ -72,11 +61,9 @@ export default function Chat() {
                     }
                 } catch (error) {
                     console.error('Error verifying session:', error);
-                    // Continue to create a new session if verification fails
                 }
             }
 
-            // Create a new session if we don't have one or the existing one is invalid
             const response = await fetch(sessionApiURL, {
                 method: 'POST',
                 headers: {
@@ -91,9 +78,7 @@ export default function Chat() {
             const data = await response.json();
             const newSessionId = data.sessionID || data._id || data.id;
 
-            // Store the session ID in sessionStorage
             sessionStorage.setItem('chatSessionId', newSessionId);
-            // Also store in localStorage for backward compatibility
             localStorage.setItem('chatSessionId', newSessionId);
 
             setSessionId(newSessionId);
@@ -101,26 +86,21 @@ export default function Chat() {
             setError(null);
         } catch (error) {
             console.error('Error initializing session:', error);
-            // Don't show technical errors to the user
             setError('We\'re having trouble connecting to the chat service. Please try again later.');
         } finally {
             setIsInitializing(false);
         }
     };
 
-    // Initialize session when the component mounts
     useEffect(() => {
         initializeSession();
     }, []);
 
-    // Handle input change
     const handleInputChange = (e) => {
         setInput(e.target.value)
-        // Clear error when user starts typing
         if (error) setError(null)
     }
 
-    // Scroll to bottom when messages change
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }
@@ -129,20 +109,17 @@ export default function Chat() {
         scrollToBottom()
     }, [messages])
 
-    // Log when messages change
     useEffect(() => {
         if (messages.length > 0) {
             console.log('Messages updated:', messages)
         }
     }, [messages])
 
-    // Handle form submission
     const handleSubmit = async (e) => {
         e.preventDefault()
 
         if (!input.trim() || isLoading) return
 
-        // Add user message to the chat
         const userMessage = {
             id: `user_${Date.now()}`,
             role: "user",
@@ -154,7 +131,6 @@ export default function Chat() {
         setInput("")
         setIsLoading(true)
 
-        // Log the message being sent
         console.log('Sending message:', {
             content: userMessage.content,
             sessionId,
@@ -162,13 +138,11 @@ export default function Chat() {
         })
 
         try {
-            // Prepare the request body
             const requestBody = {
                 messages: [...messages, userMessage],
                 sessionId
             }
 
-            // Send request to backend
             const response = await fetch(apiURL, {
                 method: 'POST',
                 headers: {
@@ -177,17 +151,14 @@ export default function Chat() {
                 body: JSON.stringify(requestBody),
             })
 
-            // Parse the response
             const data = await response.json()
 
             if (!response.ok) {
-                // Handle error response with a user-friendly message
                 const errorMessage = 'Sorry, I encountered an issue processing your request. Please try again.';
                 setError(errorMessage)
                 return
             }
 
-            // Format the assistant message
             const assistantMessage = {
                 id: data.id || `assistant_${Date.now()}`,
                 role: 'assistant',
@@ -195,30 +166,24 @@ export default function Chat() {
                 createdAt: data.createdAt || new Date()
             }
 
-            // Add assistant message to the chat
             setMessages(prev => [...prev, assistantMessage])
 
         } catch (error) {
             console.error('Chat error:', error)
 
-            // Use a user-friendly error message
             setError('Sorry, I\'m having trouble connecting right now. Please try again in a moment.')
         } finally {
             setIsLoading(false)
         }
     }
 
-    // Handle keyboard events for the chat input
     const handleKeyDown = (e) => {
-        // Submit on Enter (without Shift)
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault()
             if (input.trim() && !isLoading) {
                 handleSubmit(e)
             }
         }
-        // Allow new line on Shift+Enter
-        // No need to do anything special here as the default behavior is already correct
     }
 
     return (

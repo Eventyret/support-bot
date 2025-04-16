@@ -14,7 +14,6 @@ const sessionSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Create the model if it doesn't exist, otherwise use the existing one
 const Session = mongoose.models.Session || mongoose.model('Session', sessionSchema);
 
 export default Session; 

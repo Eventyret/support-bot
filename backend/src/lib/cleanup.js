@@ -1,6 +1,8 @@
 import Message from '../models/Message.js';
 import Session from '../models/Session.js';
-import { config } from '../config/env.js';
+import ms from 'ms';
+
+const chatCleanupAge = ms(process.env.CHAT_CLEANUP_AGE || '30d');
 
 /**
  * Preview what would be cleaned up without actually deleting anything
@@ -8,23 +10,19 @@ import { config } from '../config/env.js';
  */
 export const previewCleanup = async () => {
     try {
-        const cutoffDate = new Date(Date.now() - config.chatCleanupAge);
+        const cutoffDate = new Date(Date.now() - chatCleanupAge);
 
-        // Find messages that would be deleted
         const messagesToDelete = await Message.find({
             createdAt: { $lt: cutoffDate }
         }).countDocuments();
 
-        // Find old sessions
         const oldSessions = await Session.find({
             updatedAt: { $lt: cutoffDate }
         });
 
-        // Get the oldest message and session dates for context
         const oldestMessage = await Message.findOne({}, { createdAt: 1 }).sort({ createdAt: 1 });
         const oldestSession = await Session.findOne({}, { createdAt: 1 }).sort({ createdAt: 1 });
 
-        // Count sessions that would be deleted (those with no messages)
         let sessionsToDelete = 0;
         for (const session of oldSessions) {
             const messageCount = await Message.countDocuments({ sessionId: session._id });
@@ -39,7 +37,7 @@ export const previewCleanup = async () => {
             oldestMessage: oldestMessage?.createdAt,
             oldestSession: oldestSession?.createdAt,
             cutoffDate,
-            cleanupAge: config.chatCleanupAge
+            cleanupAge: chatCleanupAge
         };
     } catch (error) {
         console.error('Error during cleanup preview:', error);
@@ -53,34 +51,30 @@ export const previewCleanup = async () => {
  */
 export const cleanupOldChats = async () => {
     try {
-        const cutoffDate = new Date(Date.now() - config.chatCleanupAge);
+        const cutoffDate = new Date(Date.now() - chatCleanupAge);
 
-        // Delete messages older than the cutoff date
         const messagesResult = await Message.deleteMany({
             createdAt: { $lt: cutoffDate }
         });
 
-        // Find sessions that don't have any messages and are older than the cutoff
         const sessionsWithoutMessages = await Session.find({
             updatedAt: { $lt: cutoffDate }
         });
 
         const sessionIds = sessionsWithoutMessages.map(session => session._id);
 
-        // For each session, check if it has any messages
         let deletedSessionsCount = 0;
 
         for (const sessionId of sessionIds) {
             const messageCount = await Message.countDocuments({ sessionId });
 
             if (messageCount === 0) {
-                // If no messages, delete the session
                 await Session.deleteOne({ _id: sessionId });
                 deletedSessionsCount++;
             }
         }
 
-        console.log(`Cleanup completed: Removed ${messagesResult.deletedCount} messages and ${deletedSessionsCount} sessions older than ${config.chatCleanupAge / 1000 / 60 / 60 / 24} days`);
+        console.log(`Cleanup completed: Removed ${messagesResult.deletedCount} messages and ${deletedSessionsCount} sessions older than ${chatCleanupAge / 1000 / 60 / 60 / 24} days`);
 
         return {
             messages: messagesResult.deletedCount,

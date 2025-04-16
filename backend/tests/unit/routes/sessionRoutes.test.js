@@ -1,17 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-
-// Import dependencies and handlers first
 import * as sessionRoutes from '../../../src/routes/sessionRoutes.js';
 import { connectDB } from '../../../src/lib/mongoose.js';
 import Session from '../../../src/models/Session.js';
 import Message from '../../../src/models/Message.js';
 
-// Now mock the dependencies
 vi.mock('../../../src/lib/mongoose.js', () => ({
     connectDB: vi.fn().mockResolvedValue(true)
 }));
 
-// Mock Message model
 vi.mock('../../../src/models/Message.js', () => ({
     default: {
         find: vi.fn().mockImplementation(() => ({
@@ -23,7 +19,6 @@ vi.mock('../../../src/models/Message.js', () => ({
     }
 }));
 
-// Mock Session model
 vi.mock('../../../src/models/Session.js', () => ({
     default: {
         find: vi.fn(),
@@ -35,25 +30,20 @@ vi.mock('../../../src/models/Session.js', () => ({
 }));
 
 describe('Session Route Handlers', () => {
-    // Setup mock request and response
     let mockReq;
     let mockRes;
     let originalConsoleLog;
     let originalConsoleError;
 
     beforeEach(() => {
-        // Save original console methods
         originalConsoleLog = console.log;
         originalConsoleError = console.error;
 
-        // Silence console during tests
         console.log = vi.fn();
         console.error = vi.fn();
 
-        // Reset all mocks
         vi.clearAllMocks();
 
-        // Setup mock request and response
         mockReq = {
             params: {},
             body: {}
@@ -66,14 +56,12 @@ describe('Session Route Handlers', () => {
     });
 
     afterEach(() => {
-        // Restore console methods after each test
         console.log = originalConsoleLog;
         console.error = originalConsoleError;
     });
 
     describe('getAllSessions', () => {
         it('should return all sessions with their messages when successful', async () => {
-            // Setup mock data
             const mockSessions = [
                 {
                     _id: 'session1',
@@ -87,13 +75,10 @@ describe('Session Route Handlers', () => {
                 }
             ];
 
-            // Setup mocks
             Session.find.mockResolvedValueOnce(mockSessions);
 
-            // Call the handler
             await sessionRoutes.handlers.getAllSessions(mockReq, mockRes);
 
-            // Assertions - just check that the json method was called
             expect(connectDB).toHaveBeenCalled();
             expect(Session.find).toHaveBeenCalled();
             expect(Message.find).toHaveBeenCalled();
@@ -101,14 +86,11 @@ describe('Session Route Handlers', () => {
         });
 
         it('should handle errors when fetching sessions', async () => {
-            // Setup error
             const error = new Error('Database error');
             Session.find.mockRejectedValueOnce(error);
 
-            // Call the handler
             await sessionRoutes.handlers.getAllSessions(mockReq, mockRes);
 
-            // Assertions
             expect(connectDB).toHaveBeenCalled();
             expect(Session.find).toHaveBeenCalled();
             expect(mockRes.status).toHaveBeenCalledWith(500);
@@ -119,23 +101,18 @@ describe('Session Route Handlers', () => {
 
     describe('getSessionById', () => {
         it('should return a session with its messages', async () => {
-            // Setup mock request
             mockReq.params.id = 'session1';
 
-            // Setup mock data
             const mockSession = {
                 _id: 'session1',
                 sessionID: 'session1',
                 toObject: () => ({ _id: 'session1', sessionID: 'session1' })
             };
 
-            // Setup mocks
             Session.findById.mockResolvedValueOnce(mockSession);
 
-            // Call the handler
             await sessionRoutes.handlers.getSessionById(mockReq, mockRes);
 
-            // Assertions
             expect(connectDB).toHaveBeenCalled();
             expect(Session.findById).toHaveBeenCalledWith('session1');
             expect(Message.find).toHaveBeenCalledWith({ sessionId: 'session1' });
@@ -144,16 +121,12 @@ describe('Session Route Handlers', () => {
         });
 
         it('should return 404 when session not found', async () => {
-            // Setup mock request
             mockReq.params.id = 'nonexistent';
 
-            // Setup mock
             Session.findById.mockResolvedValueOnce(null);
 
-            // Call the handler
             await sessionRoutes.handlers.getSessionById(mockReq, mockRes);
 
-            // Assertions
             expect(connectDB).toHaveBeenCalled();
             expect(Session.findById).toHaveBeenCalledWith('nonexistent');
             expect(mockRes.status).toHaveBeenCalledWith(404);
@@ -162,17 +135,13 @@ describe('Session Route Handlers', () => {
         });
 
         it('should handle errors when fetching a session', async () => {
-            // Setup mock request
             mockReq.params.id = 'session1';
 
-            // Setup error
             const error = new Error('Database error');
             Session.findById.mockRejectedValueOnce(error);
 
-            // Call the handler
             await sessionRoutes.handlers.getSessionById(mockReq, mockRes);
 
-            // Assertions
             expect(connectDB).toHaveBeenCalled();
             expect(Session.findById).toHaveBeenCalledWith('session1');
             expect(mockRes.status).toHaveBeenCalledWith(500);
@@ -183,22 +152,18 @@ describe('Session Route Handlers', () => {
 
     describe('createSession', () => {
         it('should create a new session', async () => {
-            // Setup mock data - use any ID here, we don't care about the exact value
             const mockSession = {
                 _id: 'some-session-id',
                 sessionID: 'some-session-id'
             };
 
-            // Setup mocks
-            Session.findById.mockResolvedValueOnce(null); // Session doesn't exist
+            Session.findById.mockResolvedValueOnce(null);
             Session.create.mockResolvedValueOnce(mockSession);
 
-            // Call the handler
             await sessionRoutes.handlers.createSession(mockReq, mockRes);
 
-            // Assertions - don't check the specific ID, just that the steps were called
             expect(connectDB).toHaveBeenCalled();
-            expect(Session.findById).toHaveBeenCalled(); // ID will be random, so don't check specific value
+            expect(Session.findById).toHaveBeenCalled();
             expect(Session.create).toHaveBeenCalled();
             expect(mockRes.status).toHaveBeenCalledWith(201);
             expect(mockRes.json).toHaveBeenCalledWith(mockSession);
@@ -206,19 +171,15 @@ describe('Session Route Handlers', () => {
         });
 
         it('should return existing session if it already exists', async () => {
-            // Setup mock data - use any ID
             const existingSession = {
                 _id: 'some-session-id',
                 sessionID: 'some-session-id'
             };
 
-            // Setup mocks
-            Session.findById.mockResolvedValueOnce(existingSession); // Session exists
+            Session.findById.mockResolvedValueOnce(existingSession);
 
-            // Call the handler
             await sessionRoutes.handlers.createSession(mockReq, mockRes);
 
-            // Assertions - don't check specific ID
             expect(connectDB).toHaveBeenCalled();
             expect(Session.findById).toHaveBeenCalled();
             expect(Session.create).not.toHaveBeenCalled();
@@ -227,14 +188,11 @@ describe('Session Route Handlers', () => {
         });
 
         it('should handle errors when creating a session', async () => {
-            // Setup error
             const error = new Error('Database error');
             Session.findById.mockRejectedValueOnce(error);
 
-            // Call the handler
             await sessionRoutes.handlers.createSession(mockReq, mockRes);
 
-            // Assertions - don't check specific ID
             expect(connectDB).toHaveBeenCalled();
             expect(Session.findById).toHaveBeenCalled();
             expect(mockRes.status).toHaveBeenCalledWith(500);

@@ -1,4 +1,3 @@
-// @hidden
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export function useAutoScroll(options = {}) {
@@ -55,7 +54,6 @@ export function useAutoScroll(options = {}) {
 
         setScrollState((prev) => ({
             isAtBottom: atBottom,
-            // Re-enable auto-scroll if at the bottom
             autoScrollEnabled: atBottom ? true : prev.autoScrollEnabled,
         }));
     }, [checkIsAtBottom]);
@@ -104,7 +102,6 @@ export function useAutoScroll(options = {}) {
             ? checkIsAtBottom(scrollRef.current)
             : false;
 
-        // Only disable if not at bottom
         if (!atBottom) {
             userHasScrolled.current = true;
             setScrollState((prev) => ({

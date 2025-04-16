@@ -5,10 +5,8 @@ import { requireApiKey } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Protect all cleanup routes with API key
 router.use(requireApiKey);
 
-// Preview what would be cleaned up
 router.get('/preview', async (req, res) => {
     try {
         const preview = await previewCleanup();
@@ -30,7 +28,6 @@ router.get('/preview', async (req, res) => {
     }
 });
 
-// Get cleanup job status and next run time
 router.get('/status', async (req, res) => {
     try {
         const jobs = await agenda.jobs({ name: 'cleanup old chats' });
@@ -55,7 +52,6 @@ router.get('/status', async (req, res) => {
     }
 });
 
-// Manually trigger cleanup
 router.post('/run', async (req, res) => {
     try {
         const job = await agenda.now('cleanup old chats');
@@ -74,7 +70,6 @@ router.post('/run', async (req, res) => {
     }
 });
 
-// Update cleanup schedule
 router.post('/schedule', async (req, res) => {
     try {
         const { schedule } = req.body;
@@ -86,10 +81,8 @@ router.post('/schedule', async (req, res) => {
             });
         }
 
-        // Remove existing schedule
         await agenda.cancel({ name: 'cleanup old chats' });
 
-        // Create new schedule
         await agenda.every(schedule, 'cleanup old chats');
 
         res.json({
@@ -106,7 +99,6 @@ router.post('/schedule', async (req, res) => {
     }
 });
 
-// Cancel scheduled cleanup
 router.post('/cancel', async (req, res) => {
     try {
         await agenda.cancel({ name: 'cleanup old chats' });

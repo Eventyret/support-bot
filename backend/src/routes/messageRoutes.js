@@ -3,7 +3,6 @@ import Message from '../models/Message.js';
 
 const router = express.Router();
 
-// Create a new message
 router.post('/', async (req, res) => {
     try {
         const { content, role, sessionId } = req.body;
@@ -25,7 +24,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Get messages for a session
 router.get('/:sessionId', async (req, res) => {
     try {
         const messages = await Message.find({

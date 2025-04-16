@@ -1,6 +1,13 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
 import aiRoutes from './routes/aiRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
 import sessionRoutes from './routes/sessionRoutes.js';
@@ -8,14 +15,6 @@ import cleanupRoutes from './routes/cleanupRoutes.js';
 import { connectDB } from './lib/mongoose.js';
 import { startAgenda } from './lib/agenda.js';
 import { ensureDbConnection } from './middleware/db.js';
-import { config } from './config/env.js';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3000;

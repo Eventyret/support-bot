@@ -1,9 +1,8 @@
-import { config } from '../config/env.js';
-
 export const requireApiKey = (req, res, next) => {
     const apiKey = req.headers['x-api-key'];
+    const expectedKey = process.env.CLEANUP_API_KEY;
 
-    if (!apiKey || apiKey !== config.cleanupApiKey) {
+    if (!apiKey || apiKey !== expectedKey) {
         return res.status(401).json({
             success: false,
             message: 'Unauthorized: Invalid API key'

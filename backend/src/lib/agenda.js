@@ -1,14 +1,18 @@
 import Agenda from 'agenda';
-import { config } from '../config/env.js';
 import { cleanupOldChats } from './cleanup.js';
 
-// Create agenda instance
+// Check if DATABASE_URL is defined
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+    console.error('DATABASE_URL is undefined. Agenda initialization will fail.');
+    throw new Error('DATABASE_URL environment variable is not defined.');
+}
+
 const agenda = new Agenda({
-    db: { address: config.databaseUrl, collection: 'agendaJobs' },
+    db: { address: databaseUrl, collection: 'agendaJobs' },
     processEvery: '1 minute'
 });
 
-// Define cleanup job
 agenda.define('cleanup old chats', async (job) => {
     console.log('Running scheduled cleanup job...');
     try {
@@ -21,11 +25,9 @@ agenda.define('cleanup old chats', async (job) => {
     }
 });
 
-// Start agenda
 const startAgenda = async () => {
     await agenda.start();
 
-    // Schedule the cleanup job to run daily at midnight if it's not already scheduled
     const jobs = await agenda.jobs({ name: 'cleanup old chats' });
     if (jobs.length === 0) {
         await agenda.every('0 0 * * *', 'cleanup old chats');
