@@ -23,7 +23,6 @@ const messageSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Create the model if it doesn't exist, otherwise use the existing one
 const Message = mongoose.models.Message || mongoose.model('Message', messageSchema);
 
 export default Message; 

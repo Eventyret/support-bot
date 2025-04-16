@@ -1,5 +1,4 @@
 import express from 'express';
-import { connectDB } from '../lib/mongoose.js';
 import Message from '../models/Message.js';
 
 const router = express.Router();
@@ -12,9 +11,6 @@ router.post('/', async (req, res) => {
         if (!content || !role || !sessionId) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
-
-        // Connect to MongoDB
-        await connectDB();
 
         const message = await Message.create({
             content,
@@ -32,9 +28,6 @@ router.post('/', async (req, res) => {
 // Get messages for a session
 router.get('/:sessionId', async (req, res) => {
     try {
-        // Connect to MongoDB
-        await connectDB();
-
         const messages = await Message.find({
             sessionId: req.params.sessionId
         }).sort({ createdAt: 1 });

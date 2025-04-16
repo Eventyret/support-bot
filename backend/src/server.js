@@ -7,53 +7,45 @@ import sessionRoutes from './routes/sessionRoutes.js';
 import cleanupRoutes from './routes/cleanupRoutes.js';
 import { connectDB } from './lib/mongoose.js';
 import { startAgenda } from './lib/agenda.js';
+import { ensureDbConnection } from './middleware/db.js';
 import { config } from './config/env.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Get the directory name of the current module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables from the .env file in the backend directory
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
+app.use(ensureDbConnection);
 
-// Routes
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/cleanup', cleanupRoutes);
 
-// Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
-// Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// Connect to MongoDB and start the server
 const startServer = async () => {
     try {
-        // Connect to MongoDB
         await connectDB();
 
-        // Start the server
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
         });
 
-        // Start Agenda scheduler
         await startAgenda();
         console.log('Agenda scheduler started');
     } catch (error) {

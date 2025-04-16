@@ -1,6 +1,5 @@
 import express from 'express';
 import crypto from 'crypto';
-import { connectDB } from '../lib/mongoose.js';
 import Session from '../models/Session.js';
 import Message from '../models/Message.js';
 
@@ -16,9 +15,6 @@ export const handlers = {
     // Create a new session
     createSession: async (req, res) => {
         try {
-            // Connect to MongoDB
-            await connectDB();
-
             // Generate a random, anonymous session ID
             const sessionId = generateSessionId();
 
@@ -48,9 +44,6 @@ export const handlers = {
     // Get a session by ID
     getSessionById: async (req, res) => {
         try {
-            // Connect to MongoDB
-            await connectDB();
-
             const sessionId = req.params.id;
             console.log(`Fetching session: ${sessionId}`);
 
@@ -82,9 +75,6 @@ export const handlers = {
     // Get all sessions
     getAllSessions: async (req, res) => {
         try {
-            // Connect to MongoDB
-            await connectDB();
-
             // Find all sessions
             const sessions = await Session.find();
             console.log(`Found ${sessions.length} total sessions`);
