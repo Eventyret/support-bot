@@ -45,4 +45,20 @@ coverage/
 
 # Prisma
 prisma/*.db
-prisma/migrations/ 
+prisma/migrations/
+
+# Terraform / OpenTofu
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc 
