@@ -1,0 +1,46 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Node.js
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Environment files
+.env
+.env.*
+*.env
+
+# Development files
+*.log
+*.md
+*.test.js
+*.spec.js
+tests/
+coverage/
+.nyc_output/
+.vscode/
+.idea/
+
+# Build artifacts
+dist/
+build/
+*.tsbuildinfo
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Misc
+.DS_Store
+*.swp
+*.swo
+.editorconfig
+.eslintrc*
+.prettierrc*
+README.md
+LICENSE 
