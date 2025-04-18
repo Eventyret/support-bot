@@ -63,6 +63,7 @@ module "secrets" {
   environment  = var.environment
   mongodb_uri  = var.mongodb_uri
   frontend_url = var.frontend_url
+  backend_url  = var.backend_url
 }
 
 # Create ECS Fargate service for backend

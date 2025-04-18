@@ -62,8 +62,17 @@ jobs:
         # Get backend URL from Parameter Store if not provided
         BACKEND_URL="${{ inputs.backend_url }}"
         if [ -z "$BACKEND_URL" ] || [ "$BACKEND_URL" = "http://" ]; then
-          echo "Retrieving backend URL from Parameter Store"
-          BACKEND_URL="http://$(aws ssm get-parameter --name "/support-bot/prod/alb-dns-name" --query "Parameter.Value" --output text)"
+          echo "Retrieving ALB backend URL from Parameter Store"
+          ALB_URL="http://$(aws ssm get-parameter --name "/support-bot/prod/alb-dns-name" --query "Parameter.Value" --output text)"
+          
+          # Try to use the external backend first, fallback to ALB if that fails
+          BACKEND_URL="https://cognito-backend.fairytales.dev"
+          echo "Using external backend URL: $BACKEND_URL (with ALB fallback: $ALB_URL)"
+          # Ping the external backend to see if it's available
+          if ! curl --output /dev/null --silent --head --fail "$BACKEND_URL/health"; then
+            echo "External backend not available, falling back to ALB: $ALB_URL"
+            BACKEND_URL="$ALB_URL"
+          fi
         fi
         
         # Retrieve frontend URL from Parameter Store

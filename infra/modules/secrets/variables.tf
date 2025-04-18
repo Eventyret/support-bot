@@ -9,7 +9,7 @@ variable "project_name" {
 }
 
 variable "mongodb_uri" {
-  description = "MongoDB connection URI"
+  description = "The MongoDB URI for connecting to the database"
   type        = string
   sensitive   = true
 }
@@ -39,7 +39,13 @@ variable "n8n_encryption_key" {
 }
 
 variable "frontend_url" {
-  description = "Frontend URL for CORS configuration"
+  description = "The URL of the frontend application"
   type        = string
-  default     = "http://support-bot-frontend-prod.s3-website.eu-west-2.amazonaws.com"
+  default     = ""
+}
+
+variable "backend_url" {
+  description = "The URL of the backend application (if using external backend)"
+  type        = string
+  default     = ""
 }

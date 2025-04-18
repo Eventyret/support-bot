@@ -107,3 +107,9 @@ variable "frontend_url" {
   default     = "http://support-bot-frontend-prod.s3-website.eu-west-2.amazonaws.com"
   # Can be injected from GitHub Secrets as TF_VAR_frontend_url
 }
+
+variable "backend_url" {
+  description = "Backend URL to use (if using external backend)"
+  type        = string
+  default     = ""
+}
