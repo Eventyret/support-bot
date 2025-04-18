@@ -218,7 +218,28 @@ jobs:
       id: get_outputs
       working-directory: ./infra
       run: |
-        echo "alb_dns_name=$(tofu output -raw alb_dns_name)" >> $GITHUB_OUTPUT
+        echo "Trying to get ALB DNS name from Terraform outputs..."
+        ALL_OUTPUTS=$(tofu output || echo "Failed to get outputs")
+        echo "All Terraform outputs:"
+        echo "$ALL_OUTPUTS"
+        
+        ALBDNS=$(tofu output -raw alb_dns_name || echo "")
+        echo "Raw ALB DNS name from Terraform: [$ALBDNS]"
+        
+        if [ -z "$ALBDNS" ]; then
+          echo "ALB DNS name from Terraform is empty, trying Parameter Store..."
+          ALBDNS=$(aws ssm get-parameter --name "/support-bot/prod/alb-dns-name" --query "Parameter.Value" --output text 2>/dev/null || echo "")
+          
+          if [ -z "$ALBDNS" ]; then
+            echo "Parameter Store value is empty too! Setting fallback value..."
+            ALBDNS="support-bot-prod-alb-451792304.eu-west-2.elb.amazonaws.com"
+          else
+            echo "Retrieved ALB DNS from Parameter Store: $ALBDNS"
+          fi
+        fi
+        
+        echo "Final ALB DNS name value: $ALBDNS"
+        echo "alb_dns_name=$ALBDNS" >> $GITHUB_OUTPUT
       
     - name: Set Output
       id: set_output

@@ -82,3 +82,17 @@ module "ecs" {
   container_memory            = var.container_memory
   desired_count               = var.desired_count
 }
+
+# Store the ALB DNS name in Parameter Store for stable reference
+resource "aws_ssm_parameter" "alb_dns_name" {
+  name        = "/support-bot/${var.environment}/alb-dns-name"
+  description = "DNS name of the Application Load Balancer"
+  type        = "String"
+  value       = module.ecs.alb_dns_name
+  overwrite   = true
+
+  tags = {
+    Environment = var.environment
+    Terraform   = "true"
+  }
+}

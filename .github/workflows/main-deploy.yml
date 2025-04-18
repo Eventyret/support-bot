@@ -175,13 +175,42 @@ jobs:
     uses: ./.github/workflows/frontend-deploy.yml
     secrets: inherit
     with:
-      backend_url: "http://${{ needs.infrastructure.outputs.backend_url }}"
+      backend_url: ${{ needs.infrastructure.outputs.backend_url != '' && format('http://{0}', needs.infrastructure.outputs.backend_url) || 'http://support-bot-prod-alb-451792304.eu-west-2.elb.amazonaws.com' }}
+  
+  # Get ALB DNS from Parameter Store for summary
+  get-parameter-store:
+    name: Get ALB DNS from Parameter Store
+    needs: [frontend]
+    runs-on: ubuntu-latest
+    outputs:
+      alb_dns_name: ${{ steps.parameter_store.outputs.alb_dns_name }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+      
+      - name: Get Backend URL from Parameter Store
+        id: parameter_store
+        run: |
+          echo "Getting ALB DNS name from Parameter Store..."
+          ALBDNS=$(aws ssm get-parameter --name "/support-bot/prod/alb-dns-name" --query "Parameter.Value" --output text 2>/dev/null || echo "")
+          
+          if [ -z "$ALBDNS" ]; then
+            echo "Parameter Store value is empty! Using default ALB DNS..."
+            ALBDNS="support-bot-prod-alb-451792304.eu-west-2.elb.amazonaws.com"
+          fi
+          
+          echo "Using ALB DNS: $ALBDNS"
+          echo "alb_dns_name=$ALBDNS" >> $GITHUB_OUTPUT
   
   # Mark successful deployment in git history
   mark-deployment:
     name: Record Deployment
     runs-on: ubuntu-latest
-    needs: [backend, frontend, check-backend-changes, check-frontend-changes]
+    needs: [backend, frontend, check-backend-changes, check-frontend-changes, get-parameter-store]
     if: always() && (needs.backend.result == 'success' || needs.backend.result == 'skipped') && (needs.frontend.result == 'success' || needs.frontend.result == 'skipped')
     steps:
       - name: Configure AWS credentials
@@ -211,7 +240,7 @@ jobs:
   # Final summary job
   summary:
     name: Deployment Summary
-    needs: [infrastructure, backend, frontend, check-backend-changes, check-frontend-changes]
+    needs: [infrastructure, backend, frontend, check-backend-changes, check-frontend-changes, get-parameter-store]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -244,7 +273,13 @@ jobs:
           BACKEND_URL=$(terraform output -raw alb_dns_name 2>/dev/null || echo "")
           FRONTEND_URL=$(terraform output -raw frontend_website_endpoint 2>/dev/null || echo "")
           
-          # Fallback to AWS CLI if Terraform outputs fail
+          # Fallback to Parameter Store if Terraform outputs fail
+          if [[ -z "$BACKEND_URL" ]]; then
+            echo "Terraform output empty, retrieving backend URL from Parameter Store..."
+            BACKEND_URL=$(aws ssm get-parameter --name "/support-bot/prod/alb-dns-name" --query "Parameter.Value" --output text 2>/dev/null || echo "")
+          fi
+          
+          # Fallback to AWS CLI if both Terraform and Parameter Store fail
           if [[ -z "$BACKEND_URL" ]]; then
             echo "Retrieving backend URL via AWS CLI..."
             CLUSTER_NAME=$(aws ecs list-clusters | jq -r '.clusterArns[] | select(contains("support-bot-prod-cluster"))' | xargs basename 2>/dev/null || echo "")
