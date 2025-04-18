@@ -37,3 +37,9 @@ variable "n8n_encryption_key" {
   type        = string
   default     = ""
 }
+
+variable "frontend_url" {
+  description = "Frontend URL for CORS configuration"
+  type        = string
+  default     = "http://support-bot-frontend-prod.s3-website.eu-west-2.amazonaws.com"
+}

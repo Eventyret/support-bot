@@ -17,6 +17,7 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     N8N_WEBHOOK_URL    = ""
     CLEANUP_API_KEY    = ""
     N8N_ENCRYPTION_KEY = ""
+    FRONTEND_URL       = var.frontend_url
   })
 }
 

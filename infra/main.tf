@@ -62,6 +62,7 @@ module "secrets" {
   project_name = var.project_name
   environment  = var.environment
   mongodb_uri  = var.mongodb_uri
+  frontend_url = var.frontend_url
 }
 
 # Create ECS Fargate service for backend
@@ -89,6 +90,20 @@ resource "aws_ssm_parameter" "alb_dns_name" {
   description = "DNS name of the Application Load Balancer"
   type        = "String"
   value       = module.ecs.alb_dns_name
+  overwrite   = true
+
+  tags = {
+    Environment = var.environment
+    Terraform   = "true"
+  }
+}
+
+# Store the frontend URL in Parameter Store for stable reference
+resource "aws_ssm_parameter" "frontend_url" {
+  name        = "/support-bot/${var.environment}/frontend-url"
+  description = "URL of the frontend S3 website"
+  type        = "String"
+  value       = module.s3_frontend.website_endpoint
   overwrite   = true
 
   tags = {

@@ -68,6 +68,10 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name      = "N8N_ENCRYPTION_KEY"
           valueFrom = "${var.secrets_arn}:N8N_ENCRYPTION_KEY::"
+        },
+        {
+          name      = "FRONTEND_URL"
+          valueFrom = "${var.secrets_arn}:FRONTEND_URL::"
         }
       ]
 

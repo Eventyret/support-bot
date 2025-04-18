@@ -59,19 +59,22 @@ jobs:
     - name: Build frontend
       working-directory: ./frontend
       run: |
-        # Check if backend URL is empty or just "http://" and use fallback if needed
+        # Get backend URL from Parameter Store if not provided
         BACKEND_URL="${{ inputs.backend_url }}"
         if [ -z "$BACKEND_URL" ] || [ "$BACKEND_URL" = "http://" ]; then
-          echo "Warning: Empty or invalid backend URL received: '$BACKEND_URL'"
-          echo "Using fallback backend URL instead"
-          BACKEND_URL="http://support-bot-prod-alb-451792304.eu-west-2.elb.amazonaws.com"
+          echo "Retrieving backend URL from Parameter Store"
+          BACKEND_URL="http://$(aws ssm get-parameter --name "/support-bot/prod/alb-dns-name" --query "Parameter.Value" --output text)"
         fi
         
-        echo "Building frontend with backend URL: $BACKEND_URL"
+        # Retrieve frontend URL from Parameter Store
+        FRONTEND_URL=$(aws ssm get-parameter --name "/support-bot/prod/frontend-url" --query "Parameter.Value" --output text)
+        
+        echo "Building frontend with backend URL: $BACKEND_URL and frontend URL: $FRONTEND_URL"
         npm ci
         npm run build
       env:
-        VITE_BACKEND_URL: ${{ inputs.backend_url != '' && inputs.backend_url != 'http://' && inputs.backend_url || 'http://support-bot-prod-alb-451792304.eu-west-2.elb.amazonaws.com' }}
+        VITE_BACKEND_URL: ${{ env.BACKEND_URL }}
+        VITE_FRONTEND_URL: ${{ env.FRONTEND_URL }}
       
     - name: Deploy to S3
       working-directory: ./frontend

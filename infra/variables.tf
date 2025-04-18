@@ -100,3 +100,10 @@ variable "n8n_encryption_key" {
   description = "Encryption key for n8n"
   type        = string
 }
+
+variable "frontend_url" {
+  description = "Frontend URL for CORS configuration"
+  type        = string
+  default     = "http://support-bot-frontend-prod.s3-website.eu-west-2.amazonaws.com"
+  # Can be injected from GitHub Secrets as TF_VAR_frontend_url
+}

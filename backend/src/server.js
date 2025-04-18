@@ -1,26 +1,39 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 // Use the direct absolute path to the .env file in the project root
 dotenv.config({ path: '/Users/eventyret/Development/support-bot/.env' });
 
+import { setupSwagger } from './config/swagger.js';
+import { startAgenda } from './lib/agenda.js';
+import { connectDB } from './lib/mongoose.js';
+import { ensureDbConnection } from './middleware/db.js';
 import aiRoutes from './routes/aiRoutes.js';
+import cleanupRoutes from './routes/cleanupRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
 import sessionRoutes from './routes/sessionRoutes.js';
-import cleanupRoutes from './routes/cleanupRoutes.js';
-import { connectDB } from './lib/mongoose.js';
-import { startAgenda } from './lib/agenda.js';
-import { ensureDbConnection } from './middleware/db.js';
-import { setupSwagger } from './config/swagger.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const getAllowedOrigins = () => {
+    if (process.env.NODE_ENV === 'production') {
+        // In production, use the FRONTEND_URL from environment
+        const origins = [];
+        if (process.env.FRONTEND_URL) {
+            origins.push(process.env.FRONTEND_URL.startsWith('http')
+                ? process.env.FRONTEND_URL
+                : `http://${process.env.FRONTEND_URL}`);
+        }
+        return origins.length > 0 ? origins : '*';
+    }
+    // In development, allow all origins
+    return '*';
+};
+
 const corsOptions = {
-    origin: '*', // In production, you should specify your frontend domain
+    origin: getAllowedOrigins(),
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
