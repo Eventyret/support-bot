@@ -4,46 +4,78 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment of all components'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
   id-token: write
 
 jobs:
-  ci:
-    name: Run CI Checks
-    uses: ./.github/workflows/ci.yml
+  # Run linting directly in this workflow
+  lint-frontend:
+    name: Lint Frontend
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'package-lock.json'
+    
+    - name: Install Dependencies
+      run: npm ci --no-optional=false
+    
+    - name: Run Linting
+      run: npm run lint:frontend
 
-  deploy-backend:
-    name: Deploy Backend
-    needs: ci
-    uses: ./.github/workflows/backend-deploy.yml
-    secrets: inherit
+  lint-and-test-backend:
+    name: Lint and Test Backend
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'package-lock.json'
+    
+    - name: Install Dependencies
+      run: npm ci --no-optional=false
+    
+    - name: Run Linting
+      run: npm run lint:backend
+    
+    - name: Run Tests
+      run: npm run test:backend
 
-  deploy-frontend:
-    name: Deploy Frontend
-    needs: [ci, deploy-backend]
-    uses: ./.github/workflows/frontend-deploy.yml
-    with:
-      backend_url: ""  # This will trigger auto-detection
-    secrets: inherit
-
-  # First run the infrastructure deployment
+  # Deploy infrastructure first
   infrastructure:
     name: Deploy Infrastructure
+    needs: [lint-frontend, lint-and-test-backend]
     uses: ./.github/workflows/terraform-apply.yml
     secrets: inherit
     with:
       environment: ${{ github.event.inputs.environment || 'prod' }}
   
-  # Ensure deployments tracking is set up
+  # Setup tracking for deployments
   setup-deployment-tracking:
     name: Setup Deployment Tracking
     runs-on: ubuntu-latest
     needs: infrastructure
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -60,17 +92,17 @@ jobs:
   check-backend-changes:
     name: Check Backend Changes
     runs-on: ubuntu-latest
-    needs: [infrastructure, setup-deployment-tracking]
+    needs: setup-deployment-tracking
     outputs:
       has_changes: ${{ steps.check.outputs.has_changes }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Need full history for file comparison
       
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -109,8 +141,8 @@ jobs:
             echo "has_changes=false" >> $GITHUB_OUTPUT
           fi
   
-  # Then deploy the backend if needed
-  backend:
+  # Deploy the backend if needed
+  deploy-backend:
     name: Deploy Backend
     needs: check-backend-changes
     if: needs.check-backend-changes.outputs.has_changes == 'true'
@@ -121,17 +153,17 @@ jobs:
   check-frontend-changes:
     name: Check Frontend Changes
     runs-on: ubuntu-latest
-    needs: [infrastructure, backend, check-backend-changes]
+    needs: deploy-backend
     outputs:
       has_changes: ${{ steps.check.outputs.has_changes }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Need full history for file comparison
       
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -170,26 +202,56 @@ jobs:
             echo "has_changes=false" >> $GITHUB_OUTPUT
           fi
   
-  # Finally deploy the frontend if needed
-  frontend:
+  # Deploy the frontend if needed
+  deploy-frontend:
     name: Deploy Frontend
-    needs: [check-frontend-changes, backend, infrastructure]
-    if: always() && (needs.check-frontend-changes.outputs.has_changes == 'true' || needs.backend.result == 'success' || needs.backend.result == 'skipped')
+    needs: [check-frontend-changes, deploy-backend, infrastructure]
+    if: always() && (needs.check-frontend-changes.outputs.has_changes == 'true' || needs.deploy-backend.result == 'success')
     uses: ./.github/workflows/frontend-deploy.yml
     secrets: inherit
     with:
       backend_url: ${{ needs.infrastructure.outputs.backend_url != '' && format('http://{0}', needs.infrastructure.outputs.backend_url) || 'http://support-bot-prod-alb-451792304.eu-west-2.elb.amazonaws.com' }}
   
-  # Get ALB DNS from Parameter Store for summary
-  get-parameter-store:
-    name: Get ALB DNS from Parameter Store
-    needs: [frontend]
+  # Record successful deployment
+  mark-deployment:
+    name: Record Deployment
     runs-on: ubuntu-latest
-    outputs:
-      alb_dns_name: ${{ steps.parameter_store.outputs.alb_dns_name }}
+    needs: [deploy-backend, deploy-frontend, check-backend-changes, check-frontend-changes]
+    if: always() && (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped') && (needs.deploy-frontend.result == 'success' || needs.deploy-frontend.result == 'skipped')
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+          
+      - name: Create deployment marker in S3
+        run: |
+          # Create deployment markers in S3
+          TIMESTAMP=$(date +"%Y-%m-%d-%H-%M-%S")
+          
+          if [[ "${{ needs.deploy-backend.result }}" == "success" ]]; then
+            echo "${{ github.sha }}" > /tmp/backend-deploy-$TIMESTAMP
+            aws s3 cp /tmp/backend-deploy-$TIMESTAMP s3://support-bot-frontend-prod/deployments/backend-latest.txt
+            aws s3 cp /tmp/backend-deploy-$TIMESTAMP s3://support-bot-frontend-prod/deployments/backend-$TIMESTAMP.txt
+          fi
+          
+          if [[ "${{ needs.deploy-frontend.result }}" == "success" ]]; then
+            echo "${{ github.sha }}" > /tmp/frontend-deploy-$TIMESTAMP
+            aws s3 cp /tmp/frontend-deploy-$TIMESTAMP s3://support-bot-frontend-prod/deployments/frontend-latest.txt
+            aws s3 cp /tmp/frontend-deploy-$TIMESTAMP s3://support-bot-frontend-prod/deployments/frontend-$TIMESTAMP.txt
+          fi
+  
+  # Deployment summary
+  deployment-summary:
+    name: Deployment Summary
+    needs: [infrastructure, deploy-backend, deploy-frontend, check-backend-changes, check-frontend-changes, mark-deployment]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -206,142 +268,24 @@ jobs:
             ALBDNS="support-bot-prod-alb-451792304.eu-west-2.elb.amazonaws.com"
           fi
           
-          echo "Using ALB DNS: $ALBDNS"
-          echo "alb_dns_name=$ALBDNS" >> $GITHUB_OUTPUT
-  
-  # Mark successful deployment in git history
-  mark-deployment:
-    name: Record Deployment
-    runs-on: ubuntu-latest
-    needs: [backend, frontend, check-backend-changes, check-frontend-changes, get-parameter-store]
-    if: always() && (needs.backend.result == 'success' || needs.backend.result == 'skipped') && (needs.frontend.result == 'success' || needs.frontend.result == 'skipped')
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-west-2
+          FRONTEND_URL=$(aws ssm get-parameter --name "/support-bot/prod/frontend-url" --query "Parameter.Value" --output text 2>/dev/null || echo "")
           
-      - name: Create deployment marker in S3
-        run: |
-          # Create deployment markers in S3
-          TIMESTAMP=$(date +"%Y-%m-%d-%H-%M-%S")
-          
-          if [[ "${{ needs.backend.result }}" == "success" ]]; then
-            echo "${{ github.sha }}" > /tmp/backend-deploy-$TIMESTAMP
-            aws s3 cp /tmp/backend-deploy-$TIMESTAMP s3://support-bot-frontend-prod/deployments/backend-latest.txt
-            aws s3 cp /tmp/backend-deploy-$TIMESTAMP s3://support-bot-frontend-prod/deployments/backend-$TIMESTAMP.txt
+          echo "::notice title=Deployment Summary::Backend API deployed to: http://$ALBDNS"
+          if [ -n "$FRONTEND_URL" ]; then
+            echo "::notice title=Deployment Summary::Frontend UI deployed to: $FRONTEND_URL"
           fi
           
-          if [[ "${{ needs.frontend.result }}" == "success" ]]; then
-            echo "${{ github.sha }}" > /tmp/frontend-deploy-$TIMESTAMP
-            aws s3 cp /tmp/frontend-deploy-$TIMESTAMP s3://support-bot-frontend-prod/deployments/frontend-latest.txt
-            aws s3 cp /tmp/frontend-deploy-$TIMESTAMP s3://support-bot-frontend-prod/deployments/frontend-$TIMESTAMP.txt
-          fi
-  
-  # Final summary job
-  summary:
-    name: Deployment Summary
-    needs: [infrastructure, backend, frontend, check-backend-changes, check-frontend-changes, get-parameter-store]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-west-2
+          echo "Backend deployed: ${{ needs.deploy-backend.result == 'success' && 'Yes' || 'No (Skipped)' }}"
+          echo "Frontend deployed: ${{ needs.deploy-frontend.result == 'success' && 'Yes' || 'No (Skipped)' }}"
           
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y jq
-        
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_wrapper: false
+          # Create detailed markdown summary
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status | URL |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend API | ${{ needs.deploy-backend.result == 'success' && '✅ Deployed' || '⏭️ Skipped' }} | http://$ALBDNS |" >> $GITHUB_STEP_SUMMARY
           
-      - name: Get deployment URLs
-        working-directory: ./infra
-        run: |
-          # Initialize terraform to access remote state
-          terraform init -reconfigure -backend=true
-          
-          # Store Terraform outputs in environment variables
-          echo "Retrieving deployment URLs from Terraform state..."
-          BACKEND_URL=$(terraform output -raw alb_dns_name 2>/dev/null || echo "")
-          FRONTEND_URL=$(terraform output -raw frontend_website_endpoint 2>/dev/null || echo "")
-          
-          # Fallback to Parameter Store if Terraform outputs fail
-          if [[ -z "$BACKEND_URL" ]]; then
-            echo "Terraform output empty, retrieving backend URL from Parameter Store..."
-            BACKEND_URL=$(aws ssm get-parameter --name "/support-bot/prod/alb-dns-name" --query "Parameter.Value" --output text 2>/dev/null || echo "")
-          fi
-          
-          # Fallback to AWS CLI if both Terraform and Parameter Store fail
-          if [[ -z "$BACKEND_URL" ]]; then
-            echo "Retrieving backend URL via AWS CLI..."
-            CLUSTER_NAME=$(aws ecs list-clusters | jq -r '.clusterArns[] | select(contains("support-bot-prod-cluster"))' | xargs basename 2>/dev/null || echo "")
-            SERVICE_NAME=$(aws ecs list-services --cluster "$CLUSTER_NAME" | jq -r '.serviceArns[] | select(contains("support-bot-prod-service"))' | xargs basename 2>/dev/null || echo "")
-            
-            if [[ -n "$CLUSTER_NAME" && -n "$SERVICE_NAME" ]]; then
-              LB_ARN=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE_NAME" | jq -r '.services[0].loadBalancers[0].targetGroupArn' 2>/dev/null || echo "")
-              if [[ -n "$LB_ARN" ]]; then
-                LB_NAME=$(aws elbv2 describe-target-groups --target-group-arns "$LB_ARN" | jq -r '.TargetGroups[0].LoadBalancerArns[0]' | xargs basename 2>/dev/null || echo "")
-                if [[ -n "$LB_NAME" ]]; then
-                  BACKEND_URL=$(aws elbv2 describe-load-balancers --load-balancer-arns "$LB_NAME" | jq -r '.LoadBalancers[0].DNSName' 2>/dev/null || echo "")
-                fi
-              fi
-            fi
-          fi
-          
-          if [[ -z "$FRONTEND_URL" ]]; then
-            echo "Retrieving frontend URL via AWS CLI..."
-            BUCKET_NAME=$(aws s3 ls | grep support-bot-frontend-prod | awk '{print $3}' 2>/dev/null || echo "")
-            if [[ -n "$BUCKET_NAME" ]]; then
-              FRONTEND_URL="$BUCKET_NAME.s3-website.eu-west-2.amazonaws.com"
-            fi
-          fi
-          
-          # Use default messages if still not available
-          BACKEND_URL=${BACKEND_URL:-"Not available - check AWS Console"}
-          FRONTEND_URL=${FRONTEND_URL:-"Not available - check AWS Console"}
-          
-          # Save to GitHub env
-          echo "BACKEND_URL=${BACKEND_URL}" >> $GITHUB_ENV
-          echo "FRONTEND_URL=${FRONTEND_URL}" >> $GITHUB_ENV
-        
-      - name: Deployment Summary
-        run: |
-          echo "✅ Infrastructure deployment completed"
-          
-          if [[ "${{ needs.check-backend-changes.outputs.has_changes }}" == "true" ]]; then
-            if [[ "${{ needs.backend.result }}" == "success" ]]; then
-              echo "✅ Backend deployment completed"
-            else
-              echo "❌ Backend deployment failed"
-            fi
+          if [ -n "$FRONTEND_URL" ]; then
+            echo "| Frontend UI | ${{ needs.deploy-frontend.result == 'success' && '✅ Deployed' || '⏭️ Skipped' }} | $FRONTEND_URL |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "⏭️ Backend deployment skipped (no changes detected)"
-          fi
-          
-          if [[ "${{ needs.check-frontend-changes.outputs.has_changes }}" == "true" ]]; then
-            if [[ "${{ needs.frontend.result }}" == "success" ]]; then
-              echo "✅ Frontend deployment completed"
-            else
-              echo "❌ Frontend deployment failed"
-            fi
-          else
-            echo "⏭️ Frontend deployment skipped (no changes detected)"
-          fi
-          
-          echo "🎉 Full deployment pipeline complete!"
-          echo ""
-          echo "📱 Frontend URL: http://${{ env.FRONTEND_URL }}"
-          echo "🔌 Backend URL: ${{ env.BACKEND_URL }}"
-          echo ""
-          echo "Note: It may take a few minutes for DNS to propagate and services to be fully available." 
+            echo "| Frontend UI | ${{ needs.deploy-frontend.result == 'success' && '✅ Deployed' || '⏭️ Skipped' }} | http://$ALBDNS |" >> $GITHUB_STEP_SUMMARY
+          fi 

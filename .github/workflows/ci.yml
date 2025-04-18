@@ -9,11 +9,18 @@ on:
       - '.github/workflows/ci.yml'
   workflow_dispatch:
   workflow_call:
+    inputs:
+      component:
+        description: 'Component to check (frontend or backend)'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   lint-frontend:
     name: Lint Frontend
     runs-on: ubuntu-latest
+    if: ${{ inputs.component == '' || inputs.component == 'frontend' }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -26,7 +33,7 @@ jobs:
         cache-dependency-path: 'package-lock.json'
     
     - name: Install Dependencies
-      run: npm ci
+      run: npm ci --no-optional=false
     
     - name: Run Linting
       run: npm run lint:frontend
@@ -34,6 +41,7 @@ jobs:
   lint-and-test-backend:
     name: Lint and Test Backend
     runs-on: ubuntu-latest
+    if: ${{ inputs.component == '' || inputs.component == 'backend' }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -57,6 +65,7 @@ jobs:
   ci-passed:
     name: All CI Checks Passed
     needs: [lint-frontend, lint-and-test-backend]
+    if: ${{ (inputs.component == '' || (inputs.component == 'frontend' && !needs.lint-frontend.result)) || (inputs.component == 'backend' && !needs.lint-and-test-backend.result) }}
     runs-on: ubuntu-latest
     steps:
       - name: CI Check Summary
