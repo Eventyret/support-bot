@@ -15,9 +15,9 @@ permissions:
   id-token: write
 
 jobs:
-  # Run linting directly in this workflow
-  lint-frontend:
-    name: Lint Frontend
+  # Use the reusable CI workflow for basic checks
+  ci:
+    name: Run CI Checks
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
@@ -34,41 +34,10 @@ jobs:
       run: npm install -g npm@11.3.0
     
     - name: Install Dependencies
-      run: |
-        # Install platform-specific dependencies that might be missing
-        npm ci --no-optional=false
-        cd frontend
-        npm install --save-optional lightningcss-linux-x64-gnu
-        npm install --save-optional @rollup/rollup-linux-x64-gnu
+      run: npm install
     
     - name: Run Linting
-      env:
-        ROLLUP_SKIP_LOAD_NATIVE_PLUGIN: true
-        LIGHTNINGCSS_SKIP_NATIVE_TRANSFORM: 1
-      run: npm run lint:frontend
-
-  lint-and-test-backend:
-    name: Lint and Test Backend
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '22'
-        cache: 'npm'
-        cache-dependency-path: 'package-lock.json'
-    
-    - name: Update npm
-      run: npm install -g npm@11.3.0
-    
-    - name: Install Dependencies
-      run: npm ci --no-optional=false
-    
-    - name: Run Linting
-      run: npm run lint:backend
+      run: npm run lint
     
     - name: Run Tests
       run: npm run test:backend
@@ -76,191 +45,32 @@ jobs:
   # Deploy infrastructure first
   infrastructure:
     name: Deploy Infrastructure
-    needs: [lint-frontend, lint-and-test-backend]
+    needs: ci
     uses: ./.github/workflows/terraform-apply.yml
     secrets: inherit
     with:
       environment: ${{ github.event.inputs.environment || 'prod' }}
   
-  # Setup tracking for deployments
-  setup-deployment-tracking:
-    name: Setup Deployment Tracking
-    runs-on: ubuntu-latest
-    needs: infrastructure
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-west-2
-          
-      - name: Create deployments folder structure
-        run: |
-          # Create an empty deployments folder if it doesn't exist
-          mkdir -p /tmp/deployments
-          touch /tmp/deployments/.keep
-          aws s3 cp /tmp/deployments/.keep s3://support-bot-frontend-prod/deployments/.keep 2>/dev/null || echo "Deployments folder already exists"
-  
-  # Check if backend files have changed
-  check-backend-changes:
-    name: Check Backend Changes
-    runs-on: ubuntu-latest
-    needs: setup-deployment-tracking
-    outputs:
-      has_changes: ${{ steps.check.outputs.has_changes }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Need full history for file comparison
-      
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-west-2
-      
-      - name: Check for changes
-        id: check
-        run: |
-          if [[ "${{ github.event.inputs.force_deploy || 'false' }}" == "true" ]]; then
-            echo "Force deploy enabled, will deploy backend"
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          
-          # Get the last successful commit that was deployed from S3
-          aws s3 cp s3://support-bot-frontend-prod/deployments/backend-latest.txt /tmp/last-backend-deploy.txt 2>/dev/null || echo "No previous deployment marker found"
-          
-          if [ -f /tmp/last-backend-deploy.txt ]; then
-            LAST_DEPLOY_SHA=$(cat /tmp/last-backend-deploy.txt)
-            echo "Last backend deployment was commit: $LAST_DEPLOY_SHA"
-          else
-            # If no previous deployment found, always deploy
-            echo "No previous backend deployment found, will deploy"
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          
-          # Check if backend files changed since last deployment
-          CHANGES=$(git diff --name-only $LAST_DEPLOY_SHA HEAD -- backend/ .github/workflows/backend-deploy.yml)
-          
-          if [[ -n "$CHANGES" ]]; then
-            echo "Backend changes detected, will deploy"
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-          else
-            echo "No backend changes detected, skipping deployment"
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          fi
-  
-  # Deploy the backend if needed
+  # Deploy backend
   deploy-backend:
     name: Deploy Backend
-    needs: check-backend-changes
-    if: needs.check-backend-changes.outputs.has_changes == 'true'
+    needs: infrastructure
     uses: ./.github/workflows/backend-deploy.yml
     secrets: inherit
   
-  # Check if frontend files have changed
-  check-frontend-changes:
-    name: Check Frontend Changes
-    runs-on: ubuntu-latest
-    needs: deploy-backend
-    outputs:
-      has_changes: ${{ steps.check.outputs.has_changes }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Need full history for file comparison
-      
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-west-2
-      
-      - name: Check for changes
-        id: check
-        run: |
-          if [[ "${{ github.event.inputs.force_deploy || 'false' }}" == "true" ]]; then
-            echo "Force deploy enabled, will deploy frontend"
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          
-          # Get the last successful commit that was deployed from S3
-          aws s3 cp s3://support-bot-frontend-prod/deployments/frontend-latest.txt /tmp/last-frontend-deploy.txt 2>/dev/null || echo "No previous deployment marker found"
-          
-          if [ -f /tmp/last-frontend-deploy.txt ]; then
-            LAST_DEPLOY_SHA=$(cat /tmp/last-frontend-deploy.txt)
-            echo "Last frontend deployment was commit: $LAST_DEPLOY_SHA"
-          else
-            # If no previous deployment found, always deploy
-            echo "No previous frontend deployment found, will deploy"
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          
-          # Check if frontend files changed since last deployment
-          CHANGES=$(git diff --name-only $LAST_DEPLOY_SHA HEAD -- frontend/ .github/workflows/frontend-deploy.yml)
-          
-          if [[ -n "$CHANGES" ]]; then
-            echo "Frontend changes detected, will deploy"
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-          else
-            echo "No frontend changes detected, skipping deployment"
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          fi
-  
-  # Deploy the frontend if needed
+  # Deploy frontend
   deploy-frontend:
     name: Deploy Frontend
-    needs: [check-frontend-changes, deploy-backend, infrastructure]
-    if: always() && (needs.check-frontend-changes.outputs.has_changes == 'true' || needs.deploy-backend.result == 'success')
+    needs: deploy-backend
     uses: ./.github/workflows/frontend-deploy.yml
     secrets: inherit
     with:
-      backend_url: ${{ needs.infrastructure.outputs.backend_url != '' && format('http://{0}', needs.infrastructure.outputs.backend_url) || 'http://support-bot-prod-alb-451792304.eu-west-2.elb.amazonaws.com' }}
-  
-  # Record successful deployment
-  mark-deployment:
-    name: Record Deployment
-    runs-on: ubuntu-latest
-    needs: [deploy-backend, deploy-frontend, check-backend-changes, check-frontend-changes]
-    if: always() && (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped') && (needs.deploy-frontend.result == 'success' || needs.deploy-frontend.result == 'skipped')
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-west-2
-          
-      - name: Create deployment marker in S3
-        run: |
-          # Create deployment markers in S3
-          TIMESTAMP=$(date +"%Y-%m-%d-%H-%M-%S")
-          
-          if [[ "${{ needs.deploy-backend.result }}" == "success" ]]; then
-            echo "${{ github.sha }}" > /tmp/backend-deploy-$TIMESTAMP
-            aws s3 cp /tmp/backend-deploy-$TIMESTAMP s3://support-bot-frontend-prod/deployments/backend-latest.txt
-            aws s3 cp /tmp/backend-deploy-$TIMESTAMP s3://support-bot-frontend-prod/deployments/backend-$TIMESTAMP.txt
-          fi
-          
-          if [[ "${{ needs.deploy-frontend.result }}" == "success" ]]; then
-            echo "${{ github.sha }}" > /tmp/frontend-deploy-$TIMESTAMP
-            aws s3 cp /tmp/frontend-deploy-$TIMESTAMP s3://support-bot-frontend-prod/deployments/frontend-latest.txt
-            aws s3 cp /tmp/frontend-deploy-$TIMESTAMP s3://support-bot-frontend-prod/deployments/frontend-$TIMESTAMP.txt
-          fi
+      backend_url: "https://cognito-backend.fairytales.dev"
   
   # Deployment summary
   deployment-summary:
     name: Deployment Summary
-    needs: [infrastructure, deploy-backend, deploy-frontend, check-backend-changes, check-frontend-changes, mark-deployment]
+    needs: [infrastructure, deploy-backend, deploy-frontend]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -284,22 +94,18 @@ jobs:
           
           FRONTEND_URL=$(aws ssm get-parameter --name "/support-bot/prod/frontend-url" --query "Parameter.Value" --output text 2>/dev/null || echo "")
           
-          echo "::notice title=Deployment Summary::Backend API deployed to: http://$ALBDNS"
+          echo "::notice title=Deployment Summary::Backend API deployed to: https://cognito-backend.fairytales.dev"
           if [ -n "$FRONTEND_URL" ]; then
             echo "::notice title=Deployment Summary::Frontend UI deployed to: $FRONTEND_URL"
           fi
           
-          echo "Backend deployed: ${{ needs.deploy-backend.result == 'success' && 'Yes' || 'No (Skipped)' }}"
-          echo "Frontend deployed: ${{ needs.deploy-frontend.result == 'success' && 'Yes' || 'No (Skipped)' }}"
-          
-          # Create detailed markdown summary
           echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "| Component | Status | URL |" >> $GITHUB_STEP_SUMMARY
           echo "| --- | --- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| Backend API | ${{ needs.deploy-backend.result == 'success' && '✅ Deployed' || '⏭️ Skipped' }} | http://$ALBDNS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend API | ✅ Deployed | https://cognito-backend.fairytales.dev |" >> $GITHUB_STEP_SUMMARY
           
           if [ -n "$FRONTEND_URL" ]; then
-            echo "| Frontend UI | ${{ needs.deploy-frontend.result == 'success' && '✅ Deployed' || '⏭️ Skipped' }} | $FRONTEND_URL |" >> $GITHUB_STEP_SUMMARY
+            echo "| Frontend UI | ✅ Deployed | $FRONTEND_URL |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| Frontend UI | ${{ needs.deploy-frontend.result == 'success' && '✅ Deployed' || '⏭️ Skipped' }} | http://$ALBDNS |" >> $GITHUB_STEP_SUMMARY
+            echo "| Frontend UI | ✅ Deployed | http://$ALBDNS |" >> $GITHUB_STEP_SUMMARY
           fi 

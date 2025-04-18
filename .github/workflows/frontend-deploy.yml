@@ -13,7 +13,7 @@ on:
         description: 'Backend URL to use for the frontend build'
         required: false
         type: string
-        default: ""
+        default: "https://cognito-backend.fairytales.dev"
     outputs:
       frontend_ready:
         description: "Indicates if the frontend deployment completed successfully"
@@ -49,12 +49,7 @@ jobs:
       run: npm install -g npm@11.3.0
       
     - name: Install Dependencies
-      run: |
-        # Install platform-specific dependencies that might be missing
-        npm ci --no-optional=false
-        cd frontend
-        npm install --save-optional lightningcss-linux-x64-gnu
-        npm install --save-optional @rollup/rollup-linux-x64-gnu
+      run: npm install
       
     - name: Lint Frontend
       run: npm run lint:frontend
@@ -68,20 +63,11 @@ jobs:
       
     - name: Build Frontend
       run: |
-        # Get backend URL from Parameter Store if not provided
+        # Get backend URL from input parameter or use default
         BACKEND_URL="${{ inputs.backend_url }}"
-        if [ -z "$BACKEND_URL" ] || [ "$BACKEND_URL" = "http://" ]; then
-          echo "Retrieving ALB backend URL from Parameter Store"
-          ALB_URL="http://$(aws ssm get-parameter --name "/support-bot/prod/alb-dns-name" --query "Parameter.Value" --output text)"
-          
-          # Try to use the external backend first, fallback to ALB if that fails
+        if [ -z "$BACKEND_URL" ]; then
           BACKEND_URL="https://cognito-backend.fairytales.dev"
-          echo "Using external backend URL: $BACKEND_URL (with ALB fallback: $ALB_URL)"
-          # Ping the external backend to see if it's available
-          if ! curl --output /dev/null --silent --head --fail "$BACKEND_URL/health"; then
-            echo "External backend not available, falling back to ALB: $ALB_URL"
-            BACKEND_URL="$ALB_URL"
-          fi
+          echo "Using default backend URL: $BACKEND_URL"
         fi
         
         # Retrieve frontend URL from Parameter Store
@@ -89,11 +75,10 @@ jobs:
         
         echo "Building frontend with backend URL: $BACKEND_URL and frontend URL: $FRONTEND_URL"
         
-        # Set environment variables to skip platform-specific dependency errors
-        cd frontend
-        export ROLLUP_SKIP_LOAD_NATIVE_PLUGIN=true
-        export LIGHTNINGCSS_SKIP_NATIVE_TRANSFORM=1
-        VITE_BACKEND_URL="$BACKEND_URL" VITE_FRONTEND_URL="$FRONTEND_URL" npm run build
+        # Build with environment variables
+        export VITE_BACKEND_URL="$BACKEND_URL"
+        export VITE_FRONTEND_URL="$FRONTEND_URL"
+        npm run build:frontend
       
     - name: Deploy to S3
       run: |
