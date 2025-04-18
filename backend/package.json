@@ -6,12 +6,12 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "vitest run",
+    "test": "NODE_OPTIONS='--no-warnings' vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "lint": "eslint . --ext .js --report-unused-disable-directives --max-warnings 20",
     "lint:fix": "eslint . --ext .js --fix",
-    "pretest": "node -e \"try { require('@rollup/rollup-linux-x64-gnu') } catch(e) { console.log('Optional dependency missing, continuing...') }\""
+    "pretest": "node -e \"process.env.ROLLUP_SKIP_LOAD_NATIVE_PLUGIN='true'\""
   },
   "keywords": [],
   "author": "",

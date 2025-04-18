@@ -9,7 +9,7 @@
         "build:frontend": "cd frontend && npm run build",
         "build:backend": "cd backend && npm run build",
         "build": "npm run build:backend && npm run build:frontend",
-        "test:backend": "cd backend && npm test",
+        "test:backend": "ROLLUP_SKIP_LOAD_NATIVE_PLUGIN=true cd backend && npm test",
         "test": "npm run test:backend",
         "lint:frontend": "cd frontend && npm run lint",
         "lint:backend": "cd backend && npm run lint",
