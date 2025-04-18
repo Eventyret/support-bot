@@ -25,35 +25,8 @@ permissions:
   id-token: write
 
 jobs:
-  lint-and-test:
-    name: Lint and Test Backend
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: 'backend/package-lock.json'
-    
-    - name: Install dependencies
-      working-directory: ./backend
-      run: npm ci
-    
-    - name: Run Linting
-      working-directory: ./backend
-      run: npm run lint
-    
-    - name: Run Tests
-      working-directory: ./backend
-      run: npm test
-  
   build:
     name: Build Backend Image
-    needs: lint-and-test
     runs-on: ubuntu-latest
     outputs:
       image: ${{ steps.build-image.outputs.image }}

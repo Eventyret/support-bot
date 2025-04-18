@@ -1,0 +1,68 @@
+name: 🧪 CI Checks
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  lint-frontend:
+    name: Lint Frontend
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'frontend/package-lock.json'
+    
+    - name: Install Dependencies
+      working-directory: ./frontend
+      run: npm ci
+    
+    - name: Run Linting
+      working-directory: ./frontend
+      run: npm run lint
+
+  lint-and-test-backend:
+    name: Lint and Test Backend
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'backend/package-lock.json'
+    
+    - name: Install Dependencies
+      working-directory: ./backend
+      run: npm ci
+    
+    - name: Run Linting
+      working-directory: ./backend
+      run: npm run lint
+    
+    - name: Run Tests
+      working-directory: ./backend
+      run: npm test
+
+  ci-passed:
+    name: All CI Checks Passed
+    needs: [lint-frontend, lint-and-test-backend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: CI Check Summary
+        run: echo "All CI checks have passed! ✓" 
