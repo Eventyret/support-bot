@@ -17,18 +17,34 @@ import sessionRoutes from './routes/sessionRoutes.js';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Get allowed origins from environment
 const getAllowedOrigins = () => {
+    // Add debugging for CORS configuration
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
+
+    const frontendDomain = 'http://support-bot-frontend-prod.s3-website.eu-west-2.amazonaws.com';
+
     if (process.env.NODE_ENV === 'production') {
-        // In production, use the FRONTEND_URL from environment
-        const origins = [];
+        // Always include the S3 website domain plus any configured domains
+        const origins = [frontendDomain];
+
         if (process.env.FRONTEND_URL) {
-            origins.push(process.env.FRONTEND_URL.startsWith('http')
+            const url = process.env.FRONTEND_URL.startsWith('http')
                 ? process.env.FRONTEND_URL
-                : `http://${process.env.FRONTEND_URL}`);
+                : `http://${process.env.FRONTEND_URL}`;
+
+            if (!origins.includes(url)) {
+                origins.push(url);
+            }
         }
-        return origins.length > 0 ? origins : '*';
+
+        console.log('CORS origins configured:', origins);
+        return origins;
     }
+
     // In development, allow all origins
+    console.log('CORS origins in development: *');
     return '*';
 };
 
@@ -40,9 +56,15 @@ const corsOptions = {
     optionsSuccessStatus: 200
 };
 
+// Debug the final CORS configuration
+console.log('Final CORS config:', corsOptions);
+
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(ensureDbConnection);
+
+// Add explicit handling for OPTIONS preflight requests
+app.options('*', cors(corsOptions));
 
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/messages', messageRoutes);
@@ -53,7 +75,26 @@ app.use('/api/cleanup', cleanupRoutes);
 setupSwagger(app);
 
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok' });
+    // Log the request headers for debugging
+    console.log('Health check request headers:', req.headers);
+    console.log('Health check request origin:', req.headers.origin);
+
+    // Log what CORS is allowing
+    const allowedOrigins = Array.isArray(corsOptions.origin) ? corsOptions.origin : [corsOptions.origin];
+    console.log('Current allowed origins:', allowedOrigins);
+
+    // Include CORS debug info in response
+    res.json({
+        status: 'ok',
+        cors: {
+            allowedOrigins: allowedOrigins,
+            requestOrigin: req.headers.origin
+        },
+        env: {
+            NODE_ENV: process.env.NODE_ENV,
+            FRONTEND_URL: process.env.FRONTEND_URL ? '(set)' : '(not set)'
+        }
+    });
 });
 
 app.use((err, req, res, next) => {
