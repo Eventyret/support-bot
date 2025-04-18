@@ -82,7 +82,9 @@ jobs:
         echo "Building frontend with backend URL: $BACKEND_URL and frontend URL: $FRONTEND_URL"
         
         # Build with environment variables 
-        cd frontend && VITE_BACKEND_URL="$BACKEND_URL" VITE_FRONTEND_URL="$FRONTEND_URL" npm run build
+        cd frontend
+        chmod +x scripts/ci-build.sh
+        VITE_BACKEND_URL="$BACKEND_URL" VITE_FRONTEND_URL="$FRONTEND_URL" ./scripts/ci-build.sh
       
     - name: Deploy to S3
       run: |
