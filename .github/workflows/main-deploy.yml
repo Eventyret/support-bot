@@ -175,7 +175,7 @@ jobs:
     uses: ./.github/workflows/frontend-deploy.yml
     secrets: inherit
     with:
-      backend_url: ${{ needs.infrastructure.outputs.backend_url }}
+      backend_url: "http://${{ needs.infrastructure.outputs.backend_url }}"
   
   # Mark successful deployment in git history
   mark-deployment:
@@ -304,6 +304,6 @@ jobs:
           echo "🎉 Full deployment pipeline complete!"
           echo ""
           echo "📱 Frontend URL: http://${{ env.FRONTEND_URL }}"
-          echo "🔌 Backend URL: http://${{ env.BACKEND_URL }}"
+          echo "🔌 Backend URL: ${{ env.BACKEND_URL }}"
           echo ""
           echo "Note: It may take a few minutes for DNS to propagate and services to be fully available." 

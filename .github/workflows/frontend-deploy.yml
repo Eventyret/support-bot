@@ -59,6 +59,7 @@ jobs:
     - name: Build frontend
       working-directory: ./frontend
       run: |
+        echo "Building frontend with backend URL: ${{ inputs.backend_url }}"
         npm ci
         npm run build
       env:

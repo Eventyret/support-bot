@@ -275,8 +275,40 @@ resource "aws_lb_listener_rule" "api" {
   }
 
   condition {
-    http_request_method {
-      values = ["GET", "POST", "PUT", "DELETE"]
+    path_pattern {
+      values = ["/api/*"]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "api_docs" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 3
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api-docs", "/api-docs/*"]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "health" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 4
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/health"]
     }
   }
 }
