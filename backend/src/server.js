@@ -36,9 +36,6 @@ const corsOptions = {
     optionsSuccessStatus: 200
 };
 
-// Debug the final CORS configuration
-console.log('Final CORS config:', corsOptions);
-
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(ensureDbConnection);

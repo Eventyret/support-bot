@@ -54,5 +54,5 @@ export const setupSwagger = (app) => {
         res.send(swaggerSpec);
     });
 
-    console.log('Swagger documentation available at /api-docs');
+    console.log('📚 Swagger documentation available at /api-docs');
 }; 
