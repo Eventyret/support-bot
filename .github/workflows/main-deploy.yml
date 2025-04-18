@@ -34,9 +34,17 @@ jobs:
       run: npm install -g npm@11.3.0
     
     - name: Install Dependencies
-      run: npm ci --no-optional=false
+      run: |
+        # Install platform-specific dependencies that might be missing
+        npm ci --no-optional=false
+        cd frontend
+        npm install --save-optional lightningcss-linux-x64-gnu
+        npm install --save-optional @rollup/rollup-linux-x64-gnu
     
     - name: Run Linting
+      env:
+        ROLLUP_SKIP_LOAD_NATIVE_PLUGIN: true
+        LIGHTNINGCSS_SKIP_NATIVE_TRANSFORM: 1
       run: npm run lint:frontend
 
   lint-and-test-backend:
