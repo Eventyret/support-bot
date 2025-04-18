@@ -44,6 +44,9 @@ jobs:
         node-version: '18'
         cache: 'npm'
         cache-dependency-path: 'package-lock.json'
+    
+    - name: Update npm
+      run: npm install -g npm@11.3.0
       
     - name: Install Dependencies
       run: npm ci --no-optional=false
@@ -83,8 +86,8 @@ jobs:
         
         # Build with environment variables 
         cd frontend
-        chmod +x scripts/ci-build.sh
-        VITE_BACKEND_URL="$BACKEND_URL" VITE_FRONTEND_URL="$FRONTEND_URL" ./scripts/ci-build.sh
+        # Remove the ci-build script as we're using updated npm instead
+        VITE_BACKEND_URL="$BACKEND_URL" VITE_FRONTEND_URL="$FRONTEND_URL" npm run build
       
     - name: Deploy to S3
       run: |
