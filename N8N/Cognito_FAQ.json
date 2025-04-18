@@ -136,7 +136,7 @@
     },
     {
       "parameters": {
-        "content": "## Notion / Drive to pinecone",
+        "content": "## Notion / Drive to pinecone\n### Not in use for now",
         "height": 780,
         "width": 1520
       },
@@ -375,20 +375,18 @@
     },
     {
       "parameters": {
-        "rule": {
-          "interval": [
-            {}
-          ]
-        }
+        "content": "## Chat Bot",
+        "height": 1120,
+        "width": 1820
       },
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
       "position": [
-        2460,
-        480
+        1800,
+        -440
       ],
-      "id": "ddab70ad-8817-4627-bf1b-a5fd8d3b48e1",
-      "name": "Schedule Trigger"
+      "id": "ddf20afa-06a7-433d-b3e7-320db00fefdb",
+      "name": "Sticky Note1"
     }
   ],
   "pinData": {
@@ -620,7 +618,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "e58f0c36-d64d-404e-a279-bd3e61f5a802",
+  "versionId": "8600bcfa-8db1-48fc-a3e7-0410283e9880",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "9863b5f57343a90efe466769ef5a44814a14da36e8f91b99ef2e5717f14cd3b2"

@@ -53,6 +53,21 @@
       ],
       "id": "383c86dc-2927-4879-934d-c49751f2774b",
       "name": "Code"
+    },
+    {
+      "parameters": {
+        "content": "## Ability for the AI Chatbot to lookup chats",
+        "height": 460,
+        "width": 900
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -180,
+        -300
+      ],
+      "id": "201086af-00e2-4e43-b826-14324bff4d63",
+      "name": "Sticky Note"
     }
   ],
   "pinData": {
@@ -92,7 +107,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "f4269147-1f14-40de-96d6-76142488ff44",
+  "versionId": "e1c29c76-a045-4806-8e69-2be596393dce",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "9863b5f57343a90efe466769ef5a44814a14da36e8f91b99ef2e5717f14cd3b2"
