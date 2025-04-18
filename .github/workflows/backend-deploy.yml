@@ -11,7 +11,7 @@ on:
     outputs:
       backend_ready:
         description: "Indicates if the backend deployment completed successfully"
-        value: ${{ jobs.build-and-deploy.outputs.ready }}
+        value: ${{ jobs.deploy.outputs.ready }}
 
 env:
   AWS_REGION: eu-west-2
@@ -25,11 +25,38 @@ permissions:
   id-token: write
 
 jobs:
-  build-and-deploy:
-    name: Build and Deploy
+  lint-and-test:
+    name: Lint and Test Backend
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'backend/package-lock.json'
+    
+    - name: Install dependencies
+      working-directory: ./backend
+      run: npm ci
+    
+    - name: Run Linting
+      working-directory: ./backend
+      run: npm run lint
+    
+    - name: Run Tests
+      working-directory: ./backend
+      run: npm test
+  
+  build:
+    name: Build Backend Image
+    needs: lint-and-test
     runs-on: ubuntu-latest
     outputs:
-      ready: ${{ steps.set_output.outputs.ready }}
+      image: ${{ steps.build-image.outputs.image }}
     
     steps:
     - name: Checkout
@@ -58,6 +85,24 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  deploy:
+    name: Deploy Backend
+    needs: build
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.set_output.outputs.ready }}
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
     
     - name: Download task definition
       run: |
@@ -70,7 +115,7 @@ jobs:
       with:
         task-definition: ${{ env.ECS_TASK_DEFINITION }}
         container-name: support-bot-prod-backend
-        image: ${{ steps.build-image.outputs.image }}
+        image: ${{ needs.build.outputs.image }}
     
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1

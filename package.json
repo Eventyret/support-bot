@@ -1,22 +1,26 @@
 {
     "name": "support-bot",
     "version": "1.0.0",
-    "description": "A real-time chat application with anonymous sessions",
+    "description": "Support bot application with frontend and backend",
     "scripts": {
-        "start": "concurrently \"npm run start:frontend\" \"npm run start:backend\"",
-        "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
-        "start:frontend": "cd frontend && npm run build && npm run preview",
-        "start:backend": "cd backend && npm start",
-        "dev:frontend": "cd frontend && npm run dev",
-        "dev:backend": "cd backend && npm run dev",
-        "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
-        "build": "cd frontend && npm run build",
-        "lint": "cd frontend && npm run lint"
+        "start:frontend": "cd frontend && npm run dev",
+        "start:backend": "cd backend && npm run dev",
+        "start": "npm run start:backend & npm run start:frontend",
+        "build:frontend": "cd frontend && npm run build",
+        "build:backend": "cd backend && npm run build",
+        "build": "npm run build:backend && npm run build:frontend",
+        "test:backend": "cd backend && npm test",
+        "test": "npm run test:backend",
+        "lint:frontend": "cd frontend && npm run lint",
+        "lint:backend": "cd backend && npm run lint",
+        "lint": "npm run lint:backend && npm run lint:frontend",
+        "ci": "npm run lint && npm run test:backend"
     },
     "keywords": [],
     "author": "",
-    "license": "ISC",
-    "devDependencies": {
-        "concurrently": "^8.2.2"
-    }
+    "private": true,
+    "workspaces": [
+        "frontend",
+        "backend"
+    ]
 }

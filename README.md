@@ -1,5 +1,3 @@
-# **🤖 Support Bot - Your AI-Powered Customer Service Sidekick**
-
 > Because sometimes humans need a coffee break, but customer service never sleeps!
 > 
 
@@ -23,6 +21,18 @@ The Support Bot is built with the following key technologies:
 - **Database**: MongoDB - Stores chat session and message data.
 - **Workflow Engine**: n8n - Executes the AI logic and potential third-party integrations.
 - **Containerization**: Docker - Used for easily running dependencies (MongoDB, n8n) or the entire application stack.
+
+```mermaid
+graph TD
+    A[User] -->|Interacts with| B(Frontend - React);
+    B -->|API Calls| C(Backend - Express.js);
+    C -->|Manages Sessions/Messages in| D(Database - MongoDB);
+    C -->|Sends Messages to| E(Workflow Engine - n8n);
+    E -->|Uses AI Model| F(Google Gemini);
+    E -->|Accesses History/Memory in| D;
+    E -->|Sends Escalation Email| G(Gmail);
+
+```
 
 ## **🛠️ Technical Decisions & Implementation Notes**
 
@@ -60,32 +70,40 @@ This method uses Docker Compose to run all services (frontend, backend, MongoDB,
 
 1. **Clone the repository:**
     
-    ```
-    git clone <your_repository_url_here>
+    ```bash
+    git clone git@github.com:Eventyret/support-bot.git
     cd support-bot
-    
     ```
     
 2. **Create environment file:** Copy the example environment file.
     
-    ```
+    ```bash
     cp .env.example .env
-    
     ```
     
 3. **Configure Environment:** Edit the newly created `.env` file with your preferred text editor.
     - At minimum, update the placeholder values for `N8N_ENCRYPTION_KEY` and `CLEANUP_API_KEY` with any non-empty string.
     - The default values in `.env.example` for Docker setup should generally work, but review them.
-4. **Start the services:** Build and run the containers in detached mode.
+
+<aside>
+💡
+
+For `CLEANUP_API_KEY` this needs to be set in n8n if you want it to clean things up.
+
+For `N8N_ENCRYPTION_KEY` you can use the following command create a key
+`openssl rand -hex 32`
+
+</aside>
+
+1. **Start the services:** Build and run the containers in detached mode.
     
     ```
     docker-compose up --build -d
-    
     ```
     
-5. **Access the application:**
-    - Frontend (Chat UI): `http://localhost:3000`
-    - Backend API: `http://localhost:3001` (Note: Backend listens on port 3001 by default in `.env.example`)
+2. **Access the application:**
+    - Frontend (Chat UI): `http://localhost:5173`
+    - Backend API: `http://localhost:3000` (Note: Backend listens on port 3000 by default in `.env.example`)
     - n8n Workflow Engine: `http://localhost:5678`
 
 ### **🧑‍💻 The Developer Method (Local Frontend/Backend)**
@@ -104,21 +122,19 @@ This method runs the frontend and backend directly on your machine while using D
     
     ```
     npm run install:all
-    
     ```
     
 3. **Create environment file:** Copy the example environment file in the project root.
     
     ```
     cp .env.example .env
-    
     ```
     
 4. **Configure Environment:** Edit `.env`.
     - Update placeholder values for `N8N_ENCRYPTION_KEY` and `CLEANUP_API_KEY`.
     - Ensure `DATABASE_URL` is set correctly (e.g., `mongodb://localhost:27017/support-bot` if Docker port is mapped).
     - Ensure `N8N_WEBHOOK_URL_DEV` points to where your local backend can reach n8n (e.g., `http://localhost:5678/webhook/support-bot-ai-dev` if Docker port is mapped).
-    - Ensure `VITE_BACKEND_URL` in the `.env` matches the local backend port (e.g., `http://localhost:3001`).
+    - Ensure `VITE_BACKEND_URL` in the `.env` matches the local backend port (e.g., `http://localhost:3000`).
 5. **Start Dependencies (MongoDB, n8n):** Use Docker Compose to run only the database and workflow engine containers.
     
     ```bash
@@ -133,7 +149,7 @@ This method runs the frontend and backend directly on your machine while using D
     
 7. **Access the application:**
     - Frontend (Chat UI): `http://localhost:5173` (Vite development server)
-    - Backend API: `http://localhost:3001` (Express development server, matches `PORT` in `.env.example`)
+    - Backend API: `http://localhost:3000` (Express development server, matches `PORT` in `.env.example`)
     - n8n Workflow Engine: `http://localhost:5678` (Docker container)
 
 ## **🔧 Setting Up n8n Workflows**
@@ -151,13 +167,13 @@ n8n is the brain behind the AI interactions. You need to configure a workflow fo
 6. Add a **Respond to Webhook** node to send the final response back to the backend.
 7. **Save** and **Activate** the workflow.
 
-[**For detailed instructions on configuring n8n, importing and customizing included workflows, prompt engineering techniques, and required credentials, please refer to the dedicated ./N8N/README.md file.**](https://gemini.google.com/app/N8N/README.md)
+**For detailed instructions on configuring n8n, importing and customizing included workflows, prompt engineering techniques, and required credentials, please refer to the dedicated file [n8n Workflows & AI Configuration](https://www.notion.so/n8n-Workflows-AI-Configuration-1d97db620f4e802b84b0ccfb86bf624b?pvs=21) [.](https://www.notion.so/n8n-Workflows-AI-Configuration-1d97db620f4e802b84b0ccfb86bf624b?pvs=21)**
 
 ## **📚 API Documentation**
 
 The backend provides a REST API for managing sessions and messages, and interacting with the AI.
 
-- When the backend is running (either via Docker or locally), you can access the Swagger UI documentation at `/api-docs` relative to the backend's base URL (e.g., `http://localhost:3001/api-docs`).
+- When the backend is running (either via Docker or locally), you can access the Swagger UI documentation at `/api-docs` relative to the backend's base URL (e.g., `http://localhost:3000/api-docs`).
 - The Swagger definition files that generate this documentation are located in the `./backend/src/docs/` directory.
 
 Key Endpoints Summary:
@@ -181,22 +197,34 @@ Key Endpoints Summary:
 
 Helpful npm scripts defined in the root `package.json`:
 
-```
-# Run both frontend and backend in development mode concurrently
+### Run both frontend and backend in development mode concurrently
+
+```bash
 npm run dev
+```
 
-# Start the production build (frontend built, backend running)
+### Start the production build (frontend built, backend running)
+
+```bash
 npm start
+```
 
-# Build the frontend for production
+### Build the frontend for production
+
+```bash
 npm run build
+```
 
-# Lint the frontend code
+### Lint the frontend code
+
+```bash
 npm run lint
+```
 
-# Install dependencies in root, frontend, and backend
+### Install dependencies in root, frontend, and backend
+
+```bash
 npm run install:all
-
 ```
 
 Backend specific scripts (run from the `./backend` directory):
@@ -226,13 +254,20 @@ Configure these variables in your `.env` file in the project root. An `.env.exam
 | `N8N_ENCRYPTION_KEY` | Encryption key required by n8n to secure credentials. **Must be updated from placeholder.** | `your-encryption-key-here` | Yes |
 | `N8N_WEBHOOK_URL` | Full URL for the **production** n8n webhook the backend should call. | `http://localhost:5678/webhook/support-bot-ai` | Yes |
 | `N8N_WEBHOOK_URL_DEV` | Full URL for the **development** n8n webhook the backend should call. | `http://localhost:5678/webhook/support-bot-ai-dev` | No |
-| `PORT` | Backend server port. | `3001` | No |
+| `PORT` | Backend server port. | `3000` | No |
 | `NODE_ENV` | Environment mode (`development`, `production`). | `development` | No |
 | `CHAT_CLEANUP_AGE` | Age after which to clean up old chats (e.g., `30d`, `7d`). Uses `ms` format. | `30d` | No |
 | `CLEANUP_API_KEY` | API key required to access cleanup endpoints (`/api/cleanup/*`). **Must be updated from placeholder.** | `your-cleanup-api-key-here` | Yes |
 | `VITE_BACKEND_URL` | URL for the frontend to connect to the backend API. Use `http://localhost:<PORT>` matching your backend. | `http://localhost:3001` | Yes |
 
-`*Note: When running the Docker method, Docker Compose sets up a network where services can reach each other using their service names (e.g., mongodb, n8n). The DATABASE_URL and potentially N8N_WEBHOOK_URL/_DEV values might need adjustment depending on whether the backend is connecting from within Docker or from your local machine.*` The provided `.env.example` seems configured for the Developer Method connecting to dockerized services via `localhost` port mappings.
+<aside>
+💡
+
+**Note**: When running the Docker method, Docker Compose sets up a network where services can reach each other using their service names (e.g., mongodb, n8n). The `DATABASE_URL` and potentially `N8N_WEBHOOK_URL` / `N8N_WEBHOOK_URL_DEV` values might need adjustment depending on whether the backend is connecting from within Docker or from your local machine.
+
+The provided `.env.example` seems configured for the Developer Method connecting to dockerized services via `localhost` port mappings.
+
+</aside>
 
 ## **📁 Project Structure**
 
@@ -258,11 +293,11 @@ support-bot/
 ## **🐛 Troubleshooting**
 
 - **"My AI responses are slow!"**: Check your n8n workflow performance and the response time from your AI service provider configured in n8n.
-- **"Docker containers won't start!"**: Ensure required ports (3001, 5678, 27017) are not in use. Check logs with `docker-compose logs <service_name>`.
+- **"Docker containers won't start!"**: Ensure required ports (5173, 3000, 5678, 27017) are not in use. Check logs with `docker-compose logs <service_name>`.
 - **"MongoDB connection error!"**: Verify the MongoDB container is running (`docker-compose ps`). Check your `DATABASE_URL` in the `.env` file. Ensure the hostname and port are correct for your setup (e.g., `mongodb:27017` inside Docker, `localhost:27017` if using local dev with Docker port mapped).
 - **"n8n cannot connect to MongoDB/other service!"**: Ensure containers are on the same Docker network if running within Docker. Check n8n container logs. Verify credentials.
 - **"Backend not connecting to n8n!"**: Verify the n8n container is running and the webhook workflow is Activated. Check that the `N8N_WEBHOOK_URL` or `N8N_WEBHOOK_URL_DEV` in your `.env` file exactly matches the URL configured for the activated n8n webhook and is reachable from where the backend is running (e.g., using `localhost` if backend is local, or `n8n` if backend is in Docker).
 
 ## **☁️ Cloud Deployment**
 
-Infrastructure as Code using Terraform/OpenTofu for deploying to AWS is provided in the `./infra` directory. [**For detailed instructions on AWS deployment, including prerequisites, infrastructure details, and deployment steps, please refer to the dedicated ./infra/README.md file.**](https://gemini.google.com/app/infra/README.md)
+Infrastructure as Code using Terraform/OpenTofu for deploying to AWS is provided in the `./infra` directory. **For detailed instructions on AWS deployment, including prerequisites, infrastructure details, and deployment steps, please refer to the dedicated page [AWS Cloud Deployment](https://www.notion.so/AWS-Cloud-Deployment-1d97db620f4e8098aa05ef881cc74268?pvs=21)**
