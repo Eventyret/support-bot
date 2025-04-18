@@ -28,13 +28,6 @@ export default function Chat() {
     const apiURL = `${import.meta.env.VITE_BACKEND_URL}/api/ai/chat`
     const sessionApiURL = `${import.meta.env.VITE_BACKEND_URL}/api/sessions`
 
-    // Debug output
-    console.log('Environment variables:', {
-        VITE_BACKEND_URL: import.meta.env.VITE_BACKEND_URL,
-        VITE_FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL,
-        apiURL,
-        sessionApiURL
-    });
 
     const clearSession = () => {
         sessionStorage.removeItem('chatSessionId');
@@ -57,7 +50,6 @@ export default function Chat() {
                     const response = await fetch(`${sessionApiURL}/${storedSessionId}`);
                     if (response.ok) {
                         setSessionId(storedSessionId);
-                        console.log('Using existing session:', storedSessionId);
 
                         const sessionData = await response.json();
                         if (sessionData.messages && sessionData.messages.length > 0) {
@@ -90,7 +82,6 @@ export default function Chat() {
             localStorage.setItem('chatSessionId', newSessionId);
 
             setSessionId(newSessionId);
-            console.log('New session created:', newSessionId);
             setError(null);
         } catch (error) {
             console.error('Error initializing session:', error);
@@ -117,11 +108,6 @@ export default function Chat() {
         scrollToBottom()
     }, [messages])
 
-    useEffect(() => {
-        if (messages.length > 0) {
-            console.log('Messages updated:', messages)
-        }
-    }, [messages])
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -138,13 +124,6 @@ export default function Chat() {
         setMessages(prev => [...prev, userMessage])
         setInput("")
         setIsLoading(true)
-
-        console.log('Sending message:', {
-            content: userMessage.content,
-            sessionId,
-            timestamp: new Date().toISOString()
-        })
-
         try {
             const requestBody = {
                 messages: [...messages, userMessage],
