@@ -62,7 +62,7 @@ jobs:
         npm ci
         npm run build
       env:
-        VITE_BACKEND_URL: ${{ inputs.backend_url }}
+        VITE_BACKEND_URL: http://${{ inputs.backend_url }}
       
     - name: Deploy to S3
       working-directory: ./frontend
