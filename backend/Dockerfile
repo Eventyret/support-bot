@@ -36,9 +36,8 @@ COPY --from=builder /app/src ./src
 # Use the non-root user
 USER appuser
 
-# Set environment variables
-ENV NODE_ENV=production \
-    PORT=3000
+# Set default environment variables
+ENV PORT=3000
 
 # Expose port
 EXPOSE 3000
