@@ -172,7 +172,7 @@ jobs:
   # Finally deploy the frontend if needed
   frontend:
     name: Deploy Frontend
-    needs: [check-frontend-changes, backend]
+    needs: [check-frontend-changes, backend, infrastructure]
     if: always() && (needs.check-frontend-changes.outputs.has_changes == 'true' || needs.backend.result == 'success' || needs.backend.result == 'skipped')
     uses: ./.github/workflows/frontend-deploy.yml
     secrets: inherit

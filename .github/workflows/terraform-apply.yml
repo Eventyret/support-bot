@@ -38,6 +38,13 @@ on:
         required: false
         default: true
         type: boolean
+    outputs:
+      infrastructure_ready:
+        description: "Indicates if the infrastructure deployment completed successfully"
+        value: ${{ jobs.terraform.outputs.infrastructure_ready }}
+      backend_url:
+        description: "The ALB DNS name for the backend service"
+        value: ${{ jobs.terraform.outputs.backend_url }}
 
 env:
   TF_VERSION: '1.7.0'
