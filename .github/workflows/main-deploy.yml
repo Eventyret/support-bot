@@ -32,6 +32,8 @@ jobs:
     secrets: inherit
     with:
       environment: ${{ github.event.inputs.environment || 'prod' }}
+    outputs:
+      backend_url: ${{ jobs.terraform.outputs.alb_dns_name }}
   
   # Ensure deployments tracking is set up
   setup-deployment-tracking:
@@ -174,6 +176,8 @@ jobs:
     if: always() && (needs.check-frontend-changes.outputs.has_changes == 'true' || needs.backend.result == 'success' || needs.backend.result == 'skipped')
     uses: ./.github/workflows/frontend-deploy.yml
     secrets: inherit
+    with:
+      backend_url: ${{ needs.infrastructure.outputs.backend_url }}
   
   # Mark successful deployment in git history
   mark-deployment:

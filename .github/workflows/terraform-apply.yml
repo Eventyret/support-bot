@@ -53,6 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       infrastructure_ready: ${{ steps.set_output.outputs.ready }}
+      backend_url: ${{ steps.get_outputs.outputs.alb_dns_name }}
     
     steps:
     - name: Checkout
@@ -205,6 +206,12 @@ jobs:
         TF_VAR_cleanup_api_key: ${{ secrets.TF_VAR_CLEANUP_API_KEY || '' }}
         TF_VAR_n8n_encryption_key: ${{ secrets.TF_VAR_N8N_ENCRYPTION_KEY || '' }}
       run: tofu apply -auto-approve -input=false -lock=false
+
+    - name: Get Terraform Outputs
+      id: get_outputs
+      working-directory: ./infra
+      run: |
+        echo "alb_dns_name=$(tofu output -raw alb_dns_name)" >> $GITHUB_OUTPUT
       
     - name: Set Output
       id: set_output

@@ -7,7 +7,17 @@ on:
       - 'frontend/**'
       - '.github/workflows/frontend-deploy.yml'
   workflow_dispatch:
+    inputs:
+      backend_url:
+        description: 'Backend URL to use for the frontend build'
+        required: true
+        type: string
   workflow_call:
+    inputs:
+      backend_url:
+        description: 'Backend URL to use for the frontend build'
+        required: true
+        type: string
     outputs:
       frontend_ready:
         description: "Indicates if the frontend deployment completed successfully"
@@ -52,7 +62,7 @@ jobs:
         npm ci
         npm run build
       env:
-        VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
+        VITE_BACKEND_URL: ${{ inputs.backend_url }}
       
     - name: Deploy to S3
       working-directory: ./frontend
