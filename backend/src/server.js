@@ -21,7 +21,7 @@ const PORT = process.env.PORT || 3000;
 const getAllowedOrigins = () => {
     // In production, use our hosted backend
     if (process.env.NODE_ENV === 'production') {
-        return ['https://cognito-backend.fairytales.dev'];
+        return ['https://cognito-backend.fairytales.dev', "http://support-bot-frontend-prod.s3-website.eu-west-2.amazonaws.com"];
     }
 
     // In development, allow all origins
