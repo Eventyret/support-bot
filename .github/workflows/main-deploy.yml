@@ -32,8 +32,6 @@ jobs:
     secrets: inherit
     with:
       environment: ${{ github.event.inputs.environment || 'prod' }}
-    outputs:
-      backend_url: ${{ jobs.terraform.outputs.alb_dns_name }}
   
   # Ensure deployments tracking is set up
   setup-deployment-tracking:

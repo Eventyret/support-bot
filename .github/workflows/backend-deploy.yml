@@ -80,7 +80,6 @@ jobs:
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
         timeout-minutes: 5
-        codedeploy-deployment-group: deployment-group-name
         codedeploy-appspec: |
           version: 0.0
           Resources:
