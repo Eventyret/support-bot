@@ -28,6 +28,14 @@ export default function Chat() {
     const apiURL = `${import.meta.env.VITE_BACKEND_URL}/api/ai/chat`
     const sessionApiURL = `${import.meta.env.VITE_BACKEND_URL}/api/sessions`
 
+    // Debug output
+    console.log('Environment variables:', {
+        VITE_BACKEND_URL: import.meta.env.VITE_BACKEND_URL,
+        VITE_FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL,
+        apiURL,
+        sessionApiURL
+    });
+
     const clearSession = () => {
         sessionStorage.removeItem('chatSessionId');
         localStorage.removeItem('chatSessionId');

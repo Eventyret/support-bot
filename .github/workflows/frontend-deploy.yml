@@ -67,14 +67,13 @@ jobs:
         fi
         
         # Retrieve frontend URL from Parameter Store
-        FRONTEND_URL=$(aws ssm get-parameter --name "/support-bot/prod/frontend-url" --query "Parameter.Value" --output text)
+        FRONTEND_URL="http://$(aws ssm get-parameter --name "/support-bot/prod/frontend-url" --query "Parameter.Value" --output text)"
         
         echo "Building frontend with backend URL: $BACKEND_URL and frontend URL: $FRONTEND_URL"
-        npm ci
-        npm run build
-      env:
-        VITE_BACKEND_URL: ${{ env.BACKEND_URL }}
-        VITE_FRONTEND_URL: ${{ env.FRONTEND_URL }}
+        
+        # Build with environment variables 
+        VITE_BACKEND_URL="$BACKEND_URL" VITE_FRONTEND_URL="$FRONTEND_URL" npm ci
+        VITE_BACKEND_URL="$BACKEND_URL" VITE_FRONTEND_URL="$FRONTEND_URL" npm run build
       
     - name: Deploy to S3
       working-directory: ./frontend
