@@ -1,30 +1,33 @@
-name: 🚀 Complete Deployment Pipeline
+name: 🚀 Main Deployment
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        default: 'prod'
-        type: choice
-        options:
-          - prod
-          - dev
-      force_deploy:
-        description: 'Force deploy all components regardless of changes'
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: read
   id-token: write
-  actions: write
 
 jobs:
+  ci:
+    name: Run CI Checks
+    uses: ./.github/workflows/ci.yml
+
+  deploy-backend:
+    name: Deploy Backend
+    needs: ci
+    uses: ./.github/workflows/backend-deploy.yml
+    secrets: inherit
+
+  deploy-frontend:
+    name: Deploy Frontend
+    needs: [ci, deploy-backend]
+    uses: ./.github/workflows/frontend-deploy.yml
+    with:
+      backend_url: ""  # This will trigger auto-detection
+    secrets: inherit
+
   # First run the infrastructure deployment
   infrastructure:
     name: Deploy Infrastructure
