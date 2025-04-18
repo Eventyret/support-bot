@@ -91,7 +91,6 @@ resource "aws_ssm_parameter" "alb_dns_name" {
   description = "DNS name of the Application Load Balancer"
   type        = "String"
   value       = module.ecs.alb_dns_name
-  overwrite   = true
 
   tags = {
     Environment = var.environment
@@ -105,7 +104,6 @@ resource "aws_ssm_parameter" "frontend_url" {
   description = "URL of the frontend S3 website"
   type        = "String"
   value       = module.s3_frontend.website_endpoint
-  overwrite   = true
 
   tags = {
     Environment = var.environment

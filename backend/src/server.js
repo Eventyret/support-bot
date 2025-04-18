@@ -54,7 +54,7 @@ app.use('/api/cleanup', cleanupRoutes);
 // Setup Swagger documentation
 setupSwagger(app);
 
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
     res.json({
         status: 'ok',
         env: {
@@ -63,7 +63,7 @@ app.get('/health', (req, res) => {
     });
 });
 
-app.use((err, req, res, next) => {
+app.use((err, _req, res, _next) => {
     console.error('❌ Error:', err.stack);
     res.status(500).json({ error: 'Something went wrong!' });
 });

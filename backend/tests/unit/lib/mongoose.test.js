@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { connectDB } from '../../../src/lib/mongoose.js';
 
 const mockConnect = vi.fn();
@@ -14,22 +14,18 @@ vi.mock('dotenv', () => ({
 vi.mock('../../../src/lib/mongoose.js', () => {
     return {
         connectDB: async () => {
-            try {
-                if (global.mongoose) {
-                    console.log('Using existing mongoose connection');
-                    return global.mongoose;
-                }
-
-                if (!process.env.DATABASE_URL) {
-                    throw new Error('MONGODB_URI is undefined. Please check your .env file.');
-                }
-
-                const connection = await mockConnect(process.env.DATABASE_URL);
-                global.mongoose = connection;
-                return connection;
-            } catch (error) {
-                throw error;
+            if (global.mongoose) {
+                console.log('Using existing mongoose connection');
+                return global.mongoose;
             }
+
+            if (!process.env.DATABASE_URL) {
+                throw new Error('MONGODB_URI is undefined. Please check your .env file.');
+            }
+
+            const connection = await mockConnect(process.env.DATABASE_URL);
+            global.mongoose = connection;
+            return connection;
         }
     };
 });

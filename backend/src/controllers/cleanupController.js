@@ -1,5 +1,5 @@
-import { cleanupOldChats, previewCleanup } from '../lib/cleanup.js';
 import { agenda } from '../lib/agenda.js';
+import { previewCleanup } from '../lib/cleanup.js';
 
 /**
  * Get a preview of what will be cleaned up

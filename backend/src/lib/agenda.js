@@ -1,8 +1,6 @@
 import Agenda from 'agenda';
-import { cleanupOldChats } from './cleanup.js';
 import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { cleanupOldChats } from './cleanup.js';
 
 // Use the direct absolute path to the .env file in the project root
 dotenv.config({ path: '/Users/eventyret/Development/support-bot/.env' });
@@ -18,7 +16,7 @@ const agenda = new Agenda({
     processEvery: '1 minute'
 });
 
-agenda.define('cleanup old chats', async (job) => {
+agenda.define('cleanup old chats', async (_job) => {
     console.log('Running scheduled cleanup job...');
     try {
         const result = await cleanupOldChats();
@@ -40,4 +38,4 @@ const startAgenda = async () => {
     }
 };
 
-export { agenda, startAgenda }; 
+export { agenda, startAgenda };

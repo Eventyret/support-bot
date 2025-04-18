@@ -1,8 +1,6 @@
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from 'fs';
+import mongoose from 'mongoose';
 
 // Use the direct absolute path to the .env file in the project root
 const envPath = '/Users/eventyret/Development/support-bot/.env';
