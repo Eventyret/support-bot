@@ -13,7 +13,7 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
 
   secret_string = jsonencode({
     MONGODB_URI        = var.mongodb_uri
-    NODE_ENV           = var.environment
+    NODE_ENV           = "production"
     N8N_WEBHOOK_URL    = ""
     CLEANUP_API_KEY    = ""
     N8N_ENCRYPTION_KEY = ""

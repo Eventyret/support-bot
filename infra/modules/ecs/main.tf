@@ -47,12 +47,16 @@ resource "aws_ecs_task_definition" "backend" {
 
       environment = [
         {
-          name  = "NODE_ENV"
-          value = var.environment
+          name  = "PORT"
+          value = tostring(var.container_port)
         }
       ]
 
       secrets = [
+        {
+          name      = "NODE_ENV"
+          valueFrom = "${var.secrets_arn}:NODE_ENV::"
+        },
         {
           name      = "DATABASE_URL"
           valueFrom = "${var.secrets_arn}:MONGODB_URI::"
